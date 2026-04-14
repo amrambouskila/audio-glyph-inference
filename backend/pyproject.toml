@@ -5,7 +5,6 @@ description = "Research-grade system inferring a mathematical transformation fro
 readme = "../README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
-authors = [{ name = "Amram Bouskila" }]
 
 dependencies = [
     # --- Web / API (FastAPI stack per global CLAUDE.md) ---

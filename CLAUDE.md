@@ -56,7 +56,7 @@ across paired examples `(x_i, L_i)` of (audio sample, target glyph), with `d(·,
 ## 1. Project Identity
 
 - **What:** Research-grade experimental system inferring a mathematically interpretable mapping from spoken Hebrew-letter audio to Hebrew-letter glyph geometry.
-- **Where:** `/Users/amrambouskila/IMPORTANT/Projects/audio-glyph-inference/` — standalone repo, no parent monorepo.
+- **Where:** `audio-glyph-inference/` — standalone repo, no parent monorepo.
 - **Master plan:** `docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md`. **Authoritative source for goals, data contracts, phase gates, and architectural decisions.** Read before any non-trivial task.
 - **Phase file (current phase only):** `docs/phases/phase-{N}-plan.md`.
 - **Status doc:** `docs/status.md`.

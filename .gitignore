@@ -15,9 +15,7 @@ Desktop.ini
 .env.*.local
 
 # Claude state (local hook state, caches, transcripts)
-.claude/settings.local.json
-.claude/.cache/
-.claude/.state/
+.claude/
 
 # Python
 __pycache__/
