@@ -1,0 +1,143 @@
+[project]
+name = "audio-glyph-inference-backend"
+version = "0.0.1"
+description = "Research-grade system inferring a mathematical transformation from spoken Hebrew-letter audio to Hebrew-letter glyph geometry."
+readme = "../README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Amram Bouskila" }]
+
+dependencies = [
+    # --- Web / API (FastAPI stack per global CLAUDE.md) ---
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "websockets>=12.0",
+    "python-multipart>=0.0.9",
+
+    # --- Data validation / schemas (Pydantic v2) ---
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+
+    # --- Database (SQLAlchemy 2.0 async + asyncpg) ---
+    "sqlalchemy[asyncio]>=2.0.27",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+
+    # --- Cache / pubsub ---
+    "redis[hiredis]>=5.0.0",
+
+    # --- Numerical computing ---
+    "numpy>=1.26.0",
+    "scipy>=1.12.0",
+    "pandas>=2.2.0",
+    "numba>=0.59.0",
+
+    # --- Audio processing ---
+    "librosa>=0.10.1",
+    "soundfile>=0.12.1",
+    "pyloudnorm>=0.1.1",
+    # audioread is librosa's fallback decoder for formats libsndfile cannot
+    # read (notably AAC-in-MP4 / .m4a). It shells out to ffmpeg, which is
+    # installed in the backend image. Pinned explicitly so the dependency is
+    # visible in pyproject.toml rather than relying on a librosa transitive.
+    "audioread>=3.0.0",
+
+    # --- Glyph / contour extraction ---
+    "opencv-python-headless>=4.9.0",
+    "shapely>=2.0.3",
+    "freetype-py>=2.4.0",
+    "pillow>=10.2.0",
+
+    # --- Deep learning (PyTorch per global CLAUDE.md) ---
+    "torch>=2.2.0",
+    "torchaudio>=2.2.0",
+
+    # --- Static visualization (Seaborn + matplotlib per global CLAUDE.md) ---
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+
+    # --- Experiment tracking ---
+    # Lightweight JSONL + Pydantic tracker in Phase 1; MLflow evaluated at Phase 2
+    "rich>=13.7.0",
+
+    # --- Binary serialization for WebSocket payloads ---
+    "msgpack>=1.0.7",
+
+    # --- HTTP client for data source ingestion ---
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+# Symbolic regression — deferred to Phase 3 (PySR drags in Julia; install only when needed).
+symbolic = [
+    "pysr>=0.18.0",
+    "sympy>=1.12",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "ruff>=0.3.0",
+    "httpx>=0.27.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+# ============================================================
+# Ruff — lint + format (per global CLAUDE.md section 5)
+# ============================================================
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "ANN"]
+ignore = [
+    "ANN101",  # missing type annotation for self
+    "ANN102",  # missing type annotation for cls
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]  # test fixtures don't need full annotations
+
+# ============================================================
+# Pytest
+# ============================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=100",
+]
+
+# ============================================================
+# Coverage
+# ============================================================
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true

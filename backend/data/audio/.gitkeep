@@ -1,0 +1,2 @@
+# Keeps backend/data/audio/ tracked in git. Real .m4a / .wav files land
+# under {accent}/{letter}/ subdirectories and are gitignored.

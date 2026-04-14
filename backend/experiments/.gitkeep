@@ -1,0 +1,2 @@
+# Keeps backend/experiments/ tracked in git. Real run artifacts land under
+# runs/ and checkpoints/ and are gitignored.

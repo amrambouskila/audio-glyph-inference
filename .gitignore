@@ -1,0 +1,72 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Claude state (local hook state, caches, transcripts)
+.claude/settings.local.json
+.claude/.cache/
+.claude/.state/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# uv
+.uv/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# Docker
+docker-compose.override.yml
+
+# Postgres / Redis volumes
+postgres_data/
+redis_data/
+
+# Large data artifacts (tracked via Git LFS or DVC later if needed)
+backend/data/audio/*.wav
+backend/data/audio/*.flac
+backend/data/audio/*.mp3
+backend/data/audio/*.ogg
+backend/data/audio/*.m4a
+backend/data/audio/**/*.m4a
+backend/data/audio/**/*.wav
+backend/data/contours/*.npy
+backend/data/contours/*.npz
+!backend/data/audio/.gitkeep
+!backend/data/contours/.gitkeep
+
+# Experiment artifacts
+backend/experiments/runs/
+backend/experiments/checkpoints/
+*.mlflow/
+mlruns/
+
+# Jupyter
+.ipynb_checkpoints/

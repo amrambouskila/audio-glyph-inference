@@ -1,0 +1,181 @@
+# ============================================================
+# audio-glyph-inference — GitLab CI/CD Pipeline
+# ============================================================
+# Branch strategy:
+#   dev      active development. Feature branches merge here first.
+#   staging  pre-production validation. Merges from dev after CI passes.
+#   main     production-ready. Merges from staging only. Tagged with semver.
+#
+#   Merge flow: feature-branch -> dev -> staging -> main
+#
+# Coverage gate: 100% for backend/src/. Enforced in pyproject.toml via
+# --cov-fail-under=100. If coverage drops, the test stage fails and the
+# build stage (which depends on it) is blocked.
+# ============================================================
+
+spec:
+  inputs:
+    bump:
+      description: 'Semver bump type: patch, minor, or major. Leave empty to skip release.'
+      default: ''
+      options:
+        - ''
+        - 'patch'
+        - 'minor'
+        - 'major'
+---
+
+# Block pipelines triggered by the release job's tag push
+# and by the release commit itself.
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: '$CI_COMMIT_MESSAGE =~ /^release: v.*/'
+      when: never
+    - when: always
+
+stages:
+  - lint
+  - test
+  - build
+  - docker
+  - release
+
+# ============================================================
+# Shared config: Python 3.11 + uv
+# ============================================================
+.python-setup:
+  image: python:3.11-slim
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-backend
+    paths:
+      - backend/.venv/
+      - .uv-cache/
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends libsndfile1 libgl1 libglib2.0-0 build-essential curl ca-certificates ffmpeg
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - cd backend
+    - uv venv
+    - uv pip install -e '.[dev]'
+
+# ============================================================
+# Stage 1: Lint (ruff)
+# ============================================================
+lint:backend:
+  stage: lint
+  extends: .python-setup
+  script:
+    - uv run ruff check .
+    - uv run ruff format --check .
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(dev|staging|main)$/
+    - if: $CI_COMMIT_BRANCH =~ /^(dev|staging|main)$/
+
+# ============================================================
+# Stage 2: Tests + 100% coverage gate
+# Coverage threshold is enforced in backend/pyproject.toml:
+#   addopts = [..., "--cov-fail-under=100"]
+# If coverage drops below 100%, this job fails and the build
+# stage (which depends on it) is automatically skipped.
+# ============================================================
+test:backend:
+  stage: test
+  extends: .python-setup
+  script:
+    - uv run pytest --cov=src --cov-report=term-missing --cov-report=xml --junitxml=junit.xml
+  needs: [lint:backend]
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    when: always
+    reports:
+      junit: backend/junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage.xml
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(dev|staging|main)$/
+    - if: $CI_COMMIT_BRANCH =~ /^(dev|staging|main)$/
+
+# ============================================================
+# Stage 3: Build (sdist + wheel)
+# Gated on the 100% coverage test job.
+# ============================================================
+build:backend:
+  stage: build
+  extends: .python-setup
+  script:
+    - uv build
+  needs: [test:backend]
+  artifacts:
+    paths:
+      - backend/dist/
+    expire_in: 1 hour
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^(dev|staging|main)$/
+    - if: $CI_COMMIT_BRANCH =~ /^(dev|staging|main)$/
+
+# ============================================================
+# Stage 4: Docker build (verify Dockerfile still builds)
+# Runs on staging and main only.
+# ============================================================
+docker:backend:
+  stage: docker
+  image: docker:24
+  services:
+    - docker:24-dind
+  needs: [build:backend]
+  script:
+    - docker build -t audio-glyph-inference-backend:${CI_COMMIT_SHORT_SHA} backend/
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^(staging|main)$/
+
+# ============================================================
+# Manual release job
+# Triggered via: Build -> Pipelines -> New pipeline -> branch: main
+# Select a bump type from the "bump" input dropdown, then run.
+# Bumps backend/pyproject.toml's version via uv and tags the release.
+# ============================================================
+release:
+  stage: release
+  needs: [docker:backend]
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+  script:
+    - 'git config user.name "gitlab-ci[bot]"'
+    - 'git config user.email "gitlab-ci[bot]@noreply.gitlab.com"'
+    - 'cd backend'
+    - 'uv version --bump $[[ inputs.bump ]]'
+    - 'VERSION=$(uv version --output-format json | python -c "import sys, json; print(json.load(sys.stdin)[\"version\"])")'
+    - 'echo "Bumped to v$VERSION ($[[ inputs.bump ]])"'
+    - 'cd ..'
+    - 'git add backend/pyproject.toml'
+    - 'git commit -m "release: v$VERSION"'
+    - 'git tag "v$VERSION"'
+    - 'git push -o ci.skip "https://gitlab-ci-token:${RELEASE_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:main --tags'
+    - 'echo "RELEASE_VERSION=$VERSION" >> release.env'
+  artifacts:
+    reports:
+      dotenv: release.env
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && "$[[ inputs.bump ]]" != ""
+  allow_failure: false
+
+release-create:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: release
+      artifacts: true
+  script:
+    - echo "Creating release v$RELEASE_VERSION"
+  release:
+    tag_name: "v$RELEASE_VERSION"
+    name: "v$RELEASE_VERSION"
+    description: "Release v$RELEASE_VERSION"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && "$[[ inputs.bump ]]" != ""

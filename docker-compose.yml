@@ -1,0 +1,84 @@
+# ============================================================
+# audio-glyph-inference — docker-compose (Phase 1)
+# ============================================================
+# Phase 1 services:
+#   - postgres      persistent store for paired examples + experiment runs
+#   - redis         cache / pubsub (reserved for Phase 4 live streaming)
+#   - backend       FastAPI + numerics + torch (uvicorn)
+#
+# Phase 4 will add:
+#   - frontend      React 18 + TS strict + Vite + R3F (built by frontend/Dockerfile)
+#                   depends_on: { backend: { condition: service_healthy } }
+#
+# Credentials and ports come from .env — never hard-code.
+# Every stateful service has a healthcheck and the backend
+# gates on `service_healthy` before starting.
+# ============================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-audio_glyph_inference}
+      POSTGRES_USER: ${POSTGRES_USER:-agi_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agi_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agi_dev} -d ${POSTGRES_DB:-audio_glyph_inference}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: 8000
+      BACKEND_LOG_LEVEL: ${BACKEND_LOG_LEVEL:-info}
+      BACKEND_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-agi_dev}:${POSTGRES_PASSWORD:-agi_dev_password}@postgres:5432/${POSTGRES_DB:-audio_glyph_inference}
+      BACKEND_REDIS_URL: redis://redis:6379/0
+      BACKEND_AUDIO_DIR: /app/data/audio
+      BACKEND_FONT_FILE: /app/data/fonts/StamAshkenazCLM.ttf
+      BACKEND_CONTOURS_DIR: /app/data/contours
+      BACKEND_EXPERIMENTS_DIR: /app/experiments
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/data:/app/data
+      - ./backend/experiments:/app/experiments
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

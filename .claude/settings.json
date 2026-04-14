@@ -1,0 +1,100 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '=== audio-glyph-inference SESSION START ===' && echo 'MANDATORY: read CLAUDE.md, docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md, docs/status.md, docs/versions.md before any change.' && echo '' && echo '--- Current Phase ---' && if [ -f docs/status.md ]; then head -n 20 docs/status.md; else echo 'No docs/status.md yet.'; fi && echo '' && echo '--- Reminders ---' && echo '1. Re-read CLAUDE.md fully every session (mandatory).' && echo '2. The unknown is the transformation F_theta itself, not the letter label.' && echo '3. No hand-drawn shaping, no manual nudging, no decorative viz pipeline.' && echo '4. One concept per file (OOP rule). Trust your types.' && echo '5. Data-driven: no hard-coded domain values outside src/constants.py.' && echo '6. Never mock the database or core math in tests.' && echo '7. Hands off git — do not run any mutating git command.'",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "EDITED_FILE=$(jq -r '.tool_input.file_path // empty') && case \"$EDITED_FILE\" in *.env*|*credentials*|*secrets*|*.pem|*.key|*.p12) echo '{\"decision\":\"block\",\"reason\":\"Sensitive file path — confirm with user before writing.\"}' ;; *) ;; esac",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "EDITED_FILE=$(jq -r '.tool_input.file_path // empty') && case \"$EDITED_FILE\" in */backend/src/simulation/*) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Simulation code edited. Invariants: (1) engine must be importable standalone (no FastAPI / DB imports), (2) numpy arrays documented with shape+dtype+units, (3) no Python loops over frames in hot paths — vectorize or @numba.jit, (4) pytest file exists in backend/tests/simulation/ mirroring this path.\"}}' ;; */backend/src/models/*) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Pydantic model edited. This is a data contract. Do NOT silently change field names/types. Cross-check: (1) matching ORM row in backend/src/data/orm/, (2) matching test in backend/tests/models/, (3) docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md §3 data contracts still agrees.\"}}' ;; */backend/src/data/orm/*) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"ORM row edited. Must match the paired Pydantic model field-for-field (names + types) and be declared on src/data/orm/base.Base. Migration impact: add an alembic revision if this changes schema.\"}}' ;; */backend/src/simulation/transforms/*) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Transform family edited. Must implement TransformFamily protocol (name, parameter_space, forward). forward() returns ndarray shape (N,2) dtype=float64 in unit-square [-0.5, 0.5]. Parameters belong in parameter_space(), not as hard-coded literals.\"}}' ;; *) ;; esac",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "auto|manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreCompact\",\"additionalContext\":\"When summarizing, preserve: (1) current phase of audio-glyph-inference, (2) any architectural decisions made this session about transform families / search strategies / scoring metrics, (3) benchmark or validation results (shape-distance numbers, per-letter accuracy), (4) files created/modified and the reason, (5) unresolved issues about data sources, and (6) any changes to cross-layer interfaces (Pydantic model <-> ORM row <-> TransformFamily protocol).\"}}'",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CHANGED=$(git diff --name-only 2>/dev/null || true) && STAGED=$(git diff --cached --name-only 2>/dev/null || true) && if [ -n \"$CHANGED\" ] || [ -n \"$STAGED\" ]; then echo '{\"systemMessage\":\"Uncommitted changes detected. Remember: the user manages git — do not run any mutating git command. Report what changed and suggest a commit message only.\"}'; fi",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\":\"SESSION END — MEMORY REVIEW: Before this session closes, review what was learned and suggest memories the user may want to save. Check ~/.claude/projects/-Users-amrambouskila-IMPORTANT-Projects-audio-glyph-inference/memory/MEMORY.md first to avoid duplicates — update existing memories rather than creating new ones when the topic already exists. Memory types: user (role, preferences, knowledge), feedback (corrections given, confirmed approaches — include WHY), project (decisions with external motivation, deadlines, stakeholder context), reference (pointers to external systems). Worth saving: corrections the user gave you, non-obvious approaches they confirmed, project decisions driven by external factors, pointers to external tools/systems, user preferences learned this session. NOT worth saving: anything derivable from code or git history, debugging solutions, ephemeral task details, things already in CLAUDE.md. Present a short bulleted list of suggested memories at the end of your response and let the user decide which to save. Memory dir: ~/.claude/projects/-Users-amrambouskila-IMPORTANT-Projects-audio-glyph-inference/memory/\"}'",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git blame:*)",
+      "Bash(docker compose:*)",
+      "Bash(uv:*)",
+      "Bash(python:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)"
+    ],
+    "deny": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(git tag:*)"
+    ]
+  }
+}

@@ -1,0 +1,2 @@
+# Keeps backend/data/contours/ tracked in git. Real .npy contour files are
+# produced by GlyphExtractor at ingestion time and are gitignored.
