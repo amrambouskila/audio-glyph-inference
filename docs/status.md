@@ -8,6 +8,7 @@
 
 Scaffold + data decisions only. No simulation logic yet.
 
+- CI fix: `backend/pyproject.toml` no longer references `../README.md` (wheel-from-sdist was failing). Backend now ships its own `backend/README.md` and `readme = "README.md"`.
 - Directory tree, Docker stack, launcher scripts, `.claude/` wiring, project `CLAUDE.md`, master plan, and signature-only backend modules.
 - **No simulation logic has been implemented.** Every method in `backend/src/simulation/` and `backend/src/data/` currently raises `NotImplementedError`.
 - **Audio data source resolved** (master plan §11.1): user-uploaded `.m4a` files only, across the five accents `ashkenazi`, `sephardi`, `moroccan`, `yemenite`, `chabad`. No CLI recorder, no browser recorder, no public-dataset ingester.

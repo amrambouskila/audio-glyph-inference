@@ -2,7 +2,7 @@
 name = "audio-glyph-inference-backend"
 version = "0.0.1"
 description = "Research-grade system inferring a mathematical transformation from spoken Hebrew-letter audio to Hebrew-letter glyph geometry."
-readme = "../README.md"
+readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 
