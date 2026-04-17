@@ -3,6 +3,7 @@
 All tunable parameters live here (Pydantic Settings) or in data files —
 never as literals in logic. See global CLAUDE.md section 7.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

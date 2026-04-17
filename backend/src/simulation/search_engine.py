@@ -5,6 +5,7 @@ shape-distance metric, returns a ranked list of candidate θ vectors.
 Supports grid, CMA-ES, and Bayesian strategies; Phase 3 adds symbolic
 regression as a proposal source.
 """
+
 from __future__ import annotations
 
 import numpy as np

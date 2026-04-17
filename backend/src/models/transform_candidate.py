@@ -4,6 +4,7 @@ A candidate is a specific transform family plus a frozen parameter
 vector θ. Candidates are the searchable objects; experiments produce
 and rank them.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

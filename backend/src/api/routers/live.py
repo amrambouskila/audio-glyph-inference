@@ -4,6 +4,7 @@ Wire protocol: MessagePack-framed binary frames over `/ws/live`.
 Client streams 16 kHz PCM; server streams back generated geometry +
 shape-distance score for the candidate letter.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

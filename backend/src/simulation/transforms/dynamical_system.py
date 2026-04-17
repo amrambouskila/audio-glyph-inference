@@ -4,6 +4,7 @@ A small parameterized ODE system is driven by the audio waveform as
 input; the state trajectory projected to 2D is the output contour.
 Candidate systems include Van der Pol, Duffing, and coupled resonators.
 """
+
 from __future__ import annotations
 
 import numpy as np

@@ -13,6 +13,7 @@ If you find yourself reaching for a "constant" that describes a specific
 audio pipeline, glyph extractor, or transform family, it belongs in a
 Pydantic settings model, not here.
 """
+
 from __future__ import annotations
 
 import math
@@ -30,8 +31,28 @@ GOLDEN_RATIO: float = (1.0 + math.sqrt(5.0)) / 2.0
 # treated as visual variants handled at the glyph layer, not the audio
 # layer. See docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md §3.1.
 HEBREW_LETTERS: tuple[str, ...] = (
-    "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ",
-    "ל", "מ", "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת",
+    "א",
+    "ב",
+    "ג",
+    "ד",
+    "ה",
+    "ו",
+    "ז",
+    "ח",
+    "ט",
+    "י",
+    "כ",
+    "ל",
+    "מ",
+    "נ",
+    "ס",
+    "ע",
+    "פ",
+    "צ",
+    "ק",
+    "ר",
+    "ש",
+    "ת",
 )
 
 NUM_HEBREW_LETTERS: int = len(HEBREW_LETTERS)

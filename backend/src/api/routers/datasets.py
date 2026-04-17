@@ -10,6 +10,7 @@ Endpoints:
   POST /api/datasets/pairs       — associate audio ↔ glyph into a paired example
   GET  /api/datasets/pairs       — list paired examples
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

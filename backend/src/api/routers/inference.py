@@ -3,6 +3,7 @@
 Given an audio sample and a frozen candidate transform F_θ, compute the
 generated geometry and its shape distance to the target glyph.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

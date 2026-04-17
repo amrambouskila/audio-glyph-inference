@@ -5,6 +5,7 @@ the outer contour with OpenCV, resamples to a fixed number of points for
 cross-letter comparability, and returns coordinates normalized to a
 unit square centered at the origin.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

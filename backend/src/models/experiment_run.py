@@ -4,6 +4,7 @@ An experiment pins: a transform family, a search strategy (coordinate
 descent / CMA-ES / symbolic regression), a dataset split, a scoring
 metric, and a compute budget. It produces candidate transforms.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

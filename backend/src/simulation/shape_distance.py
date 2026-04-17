@@ -4,6 +4,7 @@ All metrics take two ndarrays of shape (N, 2), dtype=float64, in unit-
 square coordinates, and return a single float. Rotation/translation/
 scale invariance is the default (Procrustes alignment before distance).
 """
+
 from __future__ import annotations
 
 import numpy as np

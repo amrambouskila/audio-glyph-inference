@@ -5,6 +5,7 @@ form expressions that map audio spectral features to contour Fourier
 coefficients. Proposed expressions are then converted into standalone
 TransformFamily instances.
 """
+
 from __future__ import annotations
 
 import numpy as np

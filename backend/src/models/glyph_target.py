@@ -4,6 +4,7 @@ Rendered from a STAM-style Torah font (backend/data/fonts/) via freetype,
 then converted to an ordered contour of (x, y) points in a unit square.
 See simulation/glyph_extractor.py for the rendering pipeline.
 """
+
 from __future__ import annotations
 
 from uuid import UUID

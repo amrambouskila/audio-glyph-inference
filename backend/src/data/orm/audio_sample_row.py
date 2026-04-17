@@ -1,4 +1,5 @@
 """ORM row for audio_samples table."""
+
 from __future__ import annotations
 
 from src.data.orm.base import Base

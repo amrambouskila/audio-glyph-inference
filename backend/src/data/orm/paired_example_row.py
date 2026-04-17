@@ -1,4 +1,5 @@
 """ORM row for paired_examples table."""
+
 from __future__ import annotations
 
 from src.data.orm.base import Base

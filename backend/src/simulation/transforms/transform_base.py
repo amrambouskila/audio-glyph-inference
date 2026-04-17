@@ -11,6 +11,7 @@ Contract (sacred — see CLAUDE.md §3):
     search bounds for each θ component.
   - name() -> unique family identifier matching TransformCandidate.family.
 """
+
 from __future__ import annotations
 
 from typing import Protocol

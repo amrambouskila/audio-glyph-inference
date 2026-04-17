@@ -10,6 +10,7 @@ with θ = {a_k, b_k, phi_k, psi_k, K}. The mapping from audio to θ is
 affine in a handful of low-frequency cepstral moments; parameters are
 shared across all letters unless explicitly per-letter fit.
 """
+
 from __future__ import annotations
 
 import numpy as np

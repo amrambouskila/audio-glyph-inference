@@ -6,4 +6,5 @@ storage. The two are wired together with explicit conversion via
 class. See global CLAUDE.md section 5 for the SQLAlchemy+Pydantic
 pairing rule.
 """
+
 from __future__ import annotations

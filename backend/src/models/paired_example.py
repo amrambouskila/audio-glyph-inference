@@ -3,6 +3,7 @@
 This is the atomic unit of the dataset. All transform-family search runs
 iterate over PairedExample instances, not raw AudioSample / GlyphTarget.
 """
+
 from __future__ import annotations
 
 from uuid import UUID

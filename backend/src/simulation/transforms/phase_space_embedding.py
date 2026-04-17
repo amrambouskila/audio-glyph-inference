@@ -4,6 +4,7 @@ Uses Takens-style delay embedding of the 1D audio signal into a 2D
 attractor manifold, with θ = {delay τ, gain, rotation, center}. The
 projection to 2D is the output geometry.
 """
+
 from __future__ import annotations
 
 import numpy as np

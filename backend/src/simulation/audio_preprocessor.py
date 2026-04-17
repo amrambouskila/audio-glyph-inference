@@ -6,6 +6,7 @@ with config.audio_hop_length_samples hop. Output is always a
 numpy.ndarray of shape (num_frames, frame_length), dtype=float64,
 units=normalized-amplitude.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
