@@ -38,9 +38,12 @@ WORKDIR /app
 COPY pyproject.toml ./
 
 # Install project dependencies into a local .venv managed by uv.
+# We compile pyproject.toml to a requirements file first (rather than using
+# process substitution `<(...)`, which is bash-only and fails under /bin/sh).
 RUN uv venv /opt/venv \
-    && . /opt/venv/bin/activate \
-    && uv pip install --no-cache -r <(uv pip compile pyproject.toml)
+    && uv pip compile pyproject.toml -o /tmp/requirements.txt \
+    && uv pip install --no-cache --python /opt/venv/bin/python -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1

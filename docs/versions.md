@@ -11,6 +11,7 @@ Pre-alpha convention: this project stays on `0.0.x` until the Phase 1 data pipel
 ### Fixed
 
 - `uv build` in GitHub Actions failed on the wheel-from-sdist step because `backend/pyproject.toml`'s `readme = "../README.md"` reached outside the package root; parent-relative paths cannot travel inside an sdist, so hatchling's metadata validation aborted the wheel build. Replaced with a dedicated `backend/README.md` and set `readme = "README.md"`. Root `README.md` remains the project-wide doc; the new file is backend-package-scoped.
+- `docker-build` job failed on `backend/Dockerfile` line 41 with `Syntax error: "(" unexpected`. The dependency-install `RUN` layer used bash process substitution (`<(uv pip compile pyproject.toml)`), which `/bin/sh` (dash, the default `RUN` shell on `python:3.11-slim`) does not support. Replaced with a two-step `uv pip compile -o /tmp/requirements.txt` + `uv pip install -r /tmp/requirements.txt` (POSIX-sh compatible, same intent, cacheable).
 
 ---
 
