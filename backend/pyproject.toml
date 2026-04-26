@@ -1,6 +1,6 @@
 [project]
 name = "audio-glyph-inference-backend"
-version = "0.0.1"
+version = "0.1.0"
 description = "Research-grade system inferring a mathematical transformation from spoken Hebrew-letter audio to Hebrew-letter glyph geometry."
 readme = "README.md"
 requires-python = ">=3.11"
