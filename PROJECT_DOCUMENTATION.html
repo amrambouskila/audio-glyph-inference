@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>audio-glyph-inference — Project Documentation</title>
+  <style>
+/* ============================================================================
+   doc.css — Shared design system for project documentation pages.
+   One source of truth for every project's PROJECT_DOCUMENTATION.html.
+   Inlined directly into this PROJECT_DOCUMENTATION.html (self-contained; no external stylesheet).
+   Do not fork per-project styles. Restyle here to restyle every project at once.
+   ============================================================================ */
+
+/* ---- Theme tokens ------------------------------------------------------- */
+:root {
+  --accent: #4f46e5;
+  --accent-soft: #eef2ff;
+  --accent-border: #c7d2fe;
+  --accent-text: #4338ca;
+
+  --bg: #ffffff;
+  --bg-alt: #f7f8fa;
+  --panel: #ffffff;
+  --panel-alt: #f3f4f6;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --text: #1f2937;
+  --text-soft: #374151;
+  --muted: #6b7280;
+
+  --code-bg: #f6f8fa;
+  --code-text: #1f2937;
+  --code-border: #e5e7eb;
+
+  --fileref-bg: #eef2ff;
+  --fileref-text: #3730a3;
+  --fileref-border: #c7d2fe;
+
+  --note-bg: #eff6ff;   --note-border: #3b82f6;   --note-text: #1e40af;
+  --tip-bg: #ecfdf5;    --tip-border: #10b981;    --tip-text: #065f46;
+  --warn-bg: #fffbeb;   --warn-border: #f59e0b;   --warn-text: #92400e;
+  --key-bg: #faf5ff;    --key-border: #a855f7;    --key-text: #6b21a8;
+  --danger-bg: #fef2f2; --danger-border: #ef4444; --danger-text: #991b1b;
+
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.10);
+  --shadow-lg: 0 10px 30px rgba(16,24,40,.12);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --header-h: 64px;
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --maxw: 980px;
+}
+
+:root[data-theme="dark"] {
+  --accent: #818cf8;
+  --accent-soft: #1e213a;
+  --accent-border: #3b3f6b;
+  --accent-text: #a5b4fc;
+
+  --bg: #0d1117;
+  --bg-alt: #0a0d12;
+  --panel: #161b22;
+  --panel-alt: #1c2230;
+  --border: #2d333b;
+  --border-strong: #3d444d;
+  --text: #e6edf3;
+  --text-soft: #c9d1d9;
+  --muted: #8b949e;
+
+  --code-bg: #161b22;
+  --code-text: #e6edf3;
+  --code-border: #30363d;
+
+  --fileref-bg: #1e213a;
+  --fileref-text: #c7d2fe;
+  --fileref-border: #3b3f6b;
+
+  --note-bg: #0d2138;   --note-border: #3b82f6;   --note-text: #93c5fd;
+  --tip-bg: #082a1e;    --tip-border: #10b981;    --tip-text: #6ee7b7;
+  --warn-bg: #2b2410;   --warn-border: #f59e0b;   --warn-text: #fcd34d;
+  --key-bg: #221033;    --key-border: #a855f7;    --key-text: #d8b4fe;
+  --danger-bg: #2c1212; --danger-border: #ef4444; --danger-text: #fca5a5;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 1px 3px rgba(0,0,0,.4);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,.5);
+}
+
+/* ---- Base --------------------------------------------------------------- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg-alt);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3, h4 { line-height: 1.25; color: var(--text); }
+p { margin: 0 0 1rem; }
+hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+/* ---- Scroll progress bar ------------------------------------------------ */
+#scrollProgress {
+  position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+  background: linear-gradient(90deg, var(--accent), #ec4899);
+  z-index: 1000; transition: width .08s linear;
+}
+
+/* ---- Header ------------------------------------------------------------- */
+.doc-header {
+  position: sticky; top: 0; z-index: 900;
+  height: var(--header-h);
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0 1.25rem;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.doc-header .brand { display: flex; flex-direction: column; min-width: 0; }
+.doc-header .brand .kicker {
+  font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700;
+}
+.doc-header .brand .title {
+  font-size: 1.05rem; font-weight: 700; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 46vw;
+}
+.doc-header .spacer { flex: 1 1 auto; }
+
+.doc-search {
+  position: relative; display: flex; align-items: center;
+}
+.doc-search input {
+  width: 230px; max-width: 36vw;
+  padding: .5rem .75rem .5rem 2rem;
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  background: var(--panel); color: var(--text); font-size: .9rem;
+  outline: none; transition: border-color .15s, box-shadow .15s, width .2s;
+}
+.doc-search input:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); width: 280px;
+}
+.doc-search::before {
+  content: ""; position: absolute; left: .65rem; width: 14px; height: 14px; opacity: .55;
+  background: currentColor;
+  -webkit-mask: var(--icon-search) center/contain no-repeat;
+          mask: var(--icon-search) center/contain no-repeat;
+  color: var(--muted);
+}
+.search-count {
+  position: absolute; right: .6rem; font-size: .72rem; color: var(--muted);
+  pointer-events: none;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .42rem .7rem; font-size: .82rem; font-weight: 600;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--panel); color: var(--text-soft); cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s; white-space: nowrap;
+}
+.btn:hover { background: var(--panel-alt); border-color: var(--accent); color: var(--accent-text); }
+.btn .ico { width: 15px; height: 15px; background: currentColor;
+  -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center; }
+.btn-group { display: flex; gap: .4rem; }
+@media (max-width: 760px) { .btn .label { display: none; } .doc-header .title { max-width: 32vw; } }
+
+/* ---- Layout ------------------------------------------------------------- */
+.doc-layout {
+  display: grid; grid-template-columns: 290px minmax(0, 1fr);
+  align-items: start; gap: 0;
+  max-width: 1400px; margin: 0 auto;
+}
+.doc-toc {
+  position: sticky; top: var(--header-h);
+  height: calc(100vh - var(--header-h));
+  overflow-y: auto; padding: 1.25rem .75rem 3rem 1.25rem;
+  border-right: 1px solid var(--border);
+}
+.doc-toc .toc-title {
+  font-size: .7rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin: 0 0 .5rem .5rem;
+}
+.doc-toc ul { list-style: none; margin: 0; padding: 0; }
+.doc-toc li { margin: 0; }
+.doc-toc a {
+  display: block; padding: .32rem .5rem; border-radius: 6px;
+  color: var(--text-soft); font-size: .86rem; line-height: 1.4;
+  border-left: 2px solid transparent;
+}
+.doc-toc a:hover { background: var(--panel-alt); text-decoration: none; }
+.doc-toc a.sub { padding-left: 1.4rem; font-size: .8rem; color: var(--muted); }
+.doc-toc a.active {
+  color: var(--accent-text); background: var(--accent-soft);
+  border-left-color: var(--accent); font-weight: 600;
+}
+.doc-toc .toc-num {
+  display: inline-block; min-width: 1.4em; color: var(--muted);
+  font-variant-numeric: tabular-nums; font-weight: 600;
+}
+.doc-toc a.active .toc-num { color: var(--accent); }
+
+.doc-content { padding: 2rem 2.5rem 6rem; min-width: 0; }
+.doc-content-inner { max-width: var(--maxw); margin: 0 auto; }
+@media (max-width: 980px) {
+  .doc-layout { grid-template-columns: 1fr; }
+  .doc-toc { display: none; }
+  .doc-content { padding: 1.25rem 1rem 4rem; }
+}
+
+/* ---- Hero (page intro) -------------------------------------------------- */
+.doc-hero { margin-bottom: 1.75rem; }
+.doc-hero h1 { font-size: 2.1rem; margin: 0 0 .4rem; letter-spacing: -.02em; }
+.doc-hero .lede { font-size: 1.12rem; color: var(--text-soft); margin: 0 0 1rem; }
+.badge-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .25rem .6rem; border-radius: 999px; font-size: .76rem; font-weight: 600;
+  background: var(--panel-alt); color: var(--text-soft); border: 1px solid var(--border);
+}
+.badge.accent { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-border); }
+.badge.green  { background: var(--tip-bg); color: var(--tip-text); border-color: var(--tip-border); }
+.badge.amber  { background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-border); }
+.badge.purple { background: var(--key-bg); color: var(--key-text); border-color: var(--key-border); }
+
+.meta-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: .75rem; margin: 1rem 0 0;
+}
+.meta-grid .meta-item {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: .7rem .85rem;
+}
+.meta-grid .meta-k {
+  font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); font-weight: 700; margin-bottom: .15rem;
+}
+.meta-grid .meta-v { font-size: .92rem; font-weight: 600; color: var(--text); }
+
+/* ---- Sections (collapsible top level) ----------------------------------- */
+.doc-section { scroll-margin-top: calc(var(--header-h) + 12px); margin-bottom: 1.1rem; }
+.doc-section > details {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+}
+.doc-section > details[open] { box-shadow: var(--shadow-lg); }
+.doc-section > details > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: .75rem;
+  padding: 1rem 1.25rem; font-weight: 700;
+}
+.doc-section > details > summary::-webkit-details-marker { display: none; }
+.doc-section > details > summary:hover { background: var(--panel-alt); }
+.doc-section > details > summary h2 {
+  font-size: 1.2rem; margin: 0; font-weight: 700; flex: 1 1 auto;
+}
+.doc-section .sec-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.9rem; height: 1.9rem; border-radius: 8px;
+  background: var(--accent-soft); color: var(--accent-text);
+  font-size: .85rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.doc-section .chevron {
+  width: 18px; height: 18px; color: var(--muted); transition: transform .2s; flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask: var(--icon-chevron) center/contain no-repeat;
+          mask: var(--icon-chevron) center/contain no-repeat;
+}
+.doc-section > details[open] > summary .chevron { transform: rotate(90deg); }
+.sec-body { padding: .25rem 1.5rem 1.5rem; border-top: 1px solid var(--border); }
+.sec-body > :first-child { margin-top: 1rem; }
+
+/* sub-collapsibles inside a section (per-component drilldowns) */
+details.sub {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-alt); margin: .85rem 0; overflow: hidden;
+}
+details.sub > summary {
+  list-style: none; cursor: pointer; padding: .7rem 1rem; font-weight: 600;
+  display: flex; align-items: center; gap: .55rem; font-size: .96rem;
+}
+details.sub > summary::-webkit-details-marker { display: none; }
+details.sub > summary:hover { background: var(--panel-alt); }
+details.sub > summary::before {
+  content: ""; width: 14px; height: 14px; color: var(--muted); transition: transform .2s; flex: 0 0 auto;
+  background: currentColor;
+  -webkit-mask: var(--icon-chevron) center/contain no-repeat;
+          mask: var(--icon-chevron) center/contain no-repeat;
+}
+details.sub[open] > summary::before { transform: rotate(90deg); }
+details.sub > summary .sub-tag {
+  margin-left: auto; font-family: var(--mono); font-size: .72rem; font-weight: 600;
+  color: var(--muted); background: var(--panel-alt); border: 1px solid var(--border);
+  padding: .1rem .45rem; border-radius: 6px;
+}
+.sub-body { padding: .25rem 1rem 1rem; }
+.sub-body > :first-child { margin-top: .65rem; }
+
+/* ---- File references ---------------------------------------------------- */
+code.fileref {
+  font-family: var(--mono); font-size: .82em; font-weight: 600;
+  background: var(--fileref-bg); color: var(--fileref-text);
+  border: 1px solid var(--fileref-border); border-radius: 6px;
+  padding: .08em .45em .08em 1.5em; cursor: pointer; position: relative;
+  white-space: nowrap; transition: filter .12s;
+}
+code.fileref::before {
+  content: ""; position: absolute; left: .4em; top: 50%; transform: translateY(-50%);
+  width: .85em; height: .85em; background: currentColor; opacity: .8;
+  -webkit-mask: var(--icon-file) center/contain no-repeat;
+          mask: var(--icon-file) center/contain no-repeat;
+}
+code.fileref:hover { filter: brightness(.96); text-decoration: none; }
+:root[data-theme="dark"] code.fileref:hover { filter: brightness(1.15); }
+code.fileref.copied { background: var(--tip-bg); color: var(--tip-text); border-color: var(--tip-border); }
+code.fileref.dir::before { -webkit-mask: var(--icon-folder) center/contain no-repeat; mask: var(--icon-folder) center/contain no-repeat; }
+
+.filecard {
+  display: flex; align-items: baseline; gap: .65rem; flex-wrap: wrap;
+  padding: .55rem .7rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-alt); margin: .4rem 0;
+}
+.filecard .filecard-desc { color: var(--text-soft); font-size: .92rem; }
+.filelist { display: flex; flex-direction: column; gap: .35rem; margin: .75rem 0; }
+
+/* ---- Inline code & code blocks ------------------------------------------ */
+:not(pre) > code {
+  font-family: var(--mono); font-size: .86em;
+  background: var(--panel-alt); border: 1px solid var(--border);
+  border-radius: 5px; padding: .08em .4em; color: var(--code-text);
+}
+figure.code {
+  margin: 1rem 0; border: 1px solid var(--code-border); border-radius: var(--radius-sm);
+  overflow: hidden; background: var(--code-bg);
+}
+figure.code figcaption {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .5rem .85rem; font-family: var(--mono); font-size: .76rem; font-weight: 600;
+  color: var(--muted); background: var(--panel-alt); border-bottom: 1px solid var(--code-border);
+}
+figure.code figcaption .lang {
+  margin-left: auto; text-transform: uppercase; letter-spacing: .06em; font-size: .68rem;
+}
+figure.code pre { margin: 0; padding: .9rem 1rem; overflow-x: auto; }
+figure.code code { font-family: var(--mono); font-size: .82rem; line-height: 1.6; color: var(--code-text); background: none; border: none; padding: 0; }
+.code-copy {
+  position: absolute; top: .4rem; right: .4rem; opacity: 0; transition: opacity .15s;
+}
+figure.code { position: relative; }
+figure.code:hover .code-copy { opacity: 1; }
+
+/* ---- Callouts ----------------------------------------------------------- */
+.callout {
+  display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem;
+  padding: .85rem 1rem; border-radius: var(--radius-sm); margin: 1rem 0;
+  border: 1px solid; border-left-width: 4px;
+}
+.callout .callout-title { font-weight: 700; font-size: .9rem; grid-column: 2; }
+.callout .callout-body { grid-column: 2; }
+.callout .callout-body > :last-child { margin-bottom: 0; }
+.callout::before {
+  content: ""; grid-row: 1 / span 2; width: 18px; height: 18px; margin-top: .15rem;
+  background: currentColor;
+  -webkit-mask-size: contain; mask-size: contain;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+.callout.note  { background: var(--note-bg); border-color: var(--note-border); color: var(--note-text); }
+.callout.tip   { background: var(--tip-bg);  border-color: var(--tip-border);  color: var(--tip-text); }
+.callout.warn  { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+.callout.key   { background: var(--key-bg);  border-color: var(--key-border);  color: var(--key-text); }
+.callout.danger{ background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger-text); }
+.callout.note::before  { -webkit-mask: var(--icon-info) center/contain no-repeat; mask: var(--icon-info) center/contain no-repeat; }
+.callout.tip::before   { -webkit-mask: var(--icon-bulb) center/contain no-repeat; mask: var(--icon-bulb) center/contain no-repeat; }
+.callout.warn::before  { -webkit-mask: var(--icon-warn) center/contain no-repeat; mask: var(--icon-warn) center/contain no-repeat; }
+.callout.key::before   { -webkit-mask: var(--icon-key) center/contain no-repeat; mask: var(--icon-key) center/contain no-repeat; }
+.callout.danger::before{ -webkit-mask: var(--icon-warn) center/contain no-repeat; mask: var(--icon-warn) center/contain no-repeat; }
+.callout .callout-body code { background: color-mix(in srgb, currentColor 12%, transparent); border-color: transparent; color: inherit; }
+
+/* ---- Tables ------------------------------------------------------------- */
+.table-wrap { overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+table.doc-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+table.doc-table th, table.doc-table td { padding: .6rem .8rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.doc-table thead th { background: var(--panel-alt); font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); position: sticky; top: 0; }
+table.doc-table tbody tr:last-child td { border-bottom: none; }
+table.doc-table tbody tr:hover { background: var(--bg-alt); }
+table.doc-table code { white-space: nowrap; }
+
+/* ---- Definition lists --------------------------------------------------- */
+dl.doc-dl { margin: 1rem 0; display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: .1rem 1rem; }
+dl.doc-dl dt { font-weight: 700; color: var(--text); padding: .4rem 0; border-top: 1px solid var(--border); }
+dl.doc-dl dd { margin: 0; padding: .4rem 0; color: var(--text-soft); border-top: 1px solid var(--border); }
+dl.doc-dl dt:first-of-type, dl.doc-dl dd:first-of-type { border-top: none; }
+@media (max-width: 620px) { dl.doc-dl { grid-template-columns: 1fr; } dl.doc-dl dd { padding-top: 0; border-top: none; } }
+
+/* ---- Tech-stack cards --------------------------------------------------- */
+.stack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .85rem; margin: 1rem 0; }
+.stack-card {
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-alt);
+  padding: .85rem .95rem; display: flex; flex-direction: column; gap: .35rem;
+}
+.stack-card .stack-head { display: flex; align-items: baseline; gap: .5rem; }
+.stack-card .stack-name { font-weight: 700; font-size: 1rem; }
+.stack-card .stack-ver { font-family: var(--mono); font-size: .76rem; color: var(--accent-text); background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: 5px; padding: .05rem .4rem; }
+.stack-card .stack-why { font-size: .87rem; color: var(--text-soft); }
+.stack-card .stack-foot { margin-top: auto; }
+
+/* ---- Step list ---------------------------------------------------------- */
+ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 1rem 0; }
+ol.steps > li {
+  position: relative; padding: .15rem 0 .9rem 2.4rem; margin: 0;
+  border-left: 2px solid var(--border); margin-left: .9rem;
+}
+ol.steps > li:last-child { border-left-color: transparent; }
+ol.steps > li::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; left: -.95rem; top: 0;
+  width: 1.8rem; height: 1.8rem; border-radius: 50%;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: .85rem;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ---- Pipeline / flow chips ---------------------------------------------- */
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: 1rem 0; }
+.flow .node { padding: .35rem .7rem; border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--accent-text); border-radius: var(--radius-sm); font-weight: 600; font-size: .85rem; }
+.flow .arrow { color: var(--muted); font-weight: 700; }
+
+/* ---- Diagram (mermaid) -------------------------------------------------- */
+figure.diagram { margin: 1.25rem 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); padding: 1rem; overflow-x: auto; text-align: center; }
+figure.diagram figcaption { margin-top: .6rem; font-size: .82rem; color: var(--muted); text-align: center; }
+figure.diagram .mermaid { display: flex; justify-content: center; }
+.mermaid-fallback { display: none; }
+figure.diagram.failed .mermaid { display: none; }
+figure.diagram.failed .mermaid-fallback { display: block; text-align: left; }
+
+/* ---- Misc --------------------------------------------------------------- */
+.tag-list { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
+.tag { font-size: .76rem; padding: .15rem .5rem; border-radius: 999px; background: var(--panel-alt); border: 1px solid var(--border); color: var(--text-soft); font-family: var(--mono); }
+
+.lead-in { font-size: 1rem; color: var(--text-soft); border-left: 3px solid var(--accent); padding-left: .9rem; margin: 0 0 1.25rem; }
+
+ul.clean { list-style: none; padding-left: 0; }
+ul.clean > li { position: relative; padding-left: 1.4rem; margin: .35rem 0; }
+ul.clean > li::before { content: ""; position: absolute; left: .2rem; top: .55em; width: .4rem; height: .4rem; border-radius: 50%; background: var(--accent); }
+
+.content-section h3 { margin-top: 1.5rem; font-size: 1.05rem; }
+.sec-body h3 { margin-top: 1.6rem; font-size: 1.08rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+.sec-body h4 { margin-top: 1.2rem; font-size: .96rem; }
+
+mark.hl { background: #fde68a; color: #78350f; border-radius: 3px; padding: 0 .1em; }
+:root[data-theme="dark"] mark.hl { background: #92400e; color: #fde68a; }
+
+.filtered-out { display: none !important; }
+
+/* ---- Back to top -------------------------------------------------------- */
+#backTop {
+  position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 800;
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-strong);
+  background: var(--panel); color: var(--text-soft); cursor: pointer; box-shadow: var(--shadow-lg);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .2s, transform .2s;
+}
+#backTop.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+#backTop:hover { color: var(--accent-text); border-color: var(--accent); }
+#backTop .ico { width: 20px; height: 20px; background: currentColor; -webkit-mask: var(--icon-up) center/contain no-repeat; mask: var(--icon-up) center/contain no-repeat; }
+
+/* ---- Footer ------------------------------------------------------------- */
+.doc-footer {
+  border-top: 1px solid var(--border); margin-top: 2rem; padding: 1.5rem 2.5rem;
+  color: var(--muted); font-size: .84rem; max-width: 1400px; margin-left: auto; margin-right: auto;
+}
+.doc-footer code { font-size: .8em; }
+
+/* ---- Icons (data-URI masks; monochrome, themeable via currentColor) ----- */
+:root {
+  --icon-search: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>');
+  --icon-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>');
+  --icon-file: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>');
+  --icon-folder: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>');
+  --icon-info: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>');
+  --icon-bulb: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M15.09 14c.18-.79.62-1.42 1.27-2A4.5 4.5 0 1 0 7.64 12c.65.58 1.09 1.21 1.27 2"/></svg>');
+  --icon-warn: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>');
+  --icon-key: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg>');
+  --icon-up: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>');
+  --icon-expand: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg>');
+  --icon-collapse: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 20 5-5 5 5M7 4l5 5 5-5"/></svg>');
+  --icon-sun: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>');
+  --icon-moon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>');
+  --icon-print: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>');
+  --icon-copy: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>');
+}
+
+/* ---- Print -------------------------------------------------------------- */
+@media print {
+  .doc-header, .doc-toc, #backTop, #scrollProgress, .code-copy { display: none !important; }
+  .doc-layout { grid-template-columns: 1fr; }
+  .doc-content { padding: 0; }
+  .doc-section > details { box-shadow: none; border-color: #ccc; break-inside: avoid; }
+  body { background: #fff; }
+  a { color: inherit; }
+}
+
+/* ---- Index hub (DOCUMENTATION_INDEX.html) ------------------------------- */
+.index-wrap { max-width: 1180px; margin: 0 auto; padding: 2.5rem 2rem 5rem; }
+.index-hero { margin-bottom: 2rem; }
+.index-hero h1 { font-size: 2.3rem; margin: 0 0 .5rem; letter-spacing: -.02em; }
+.index-hero .lede { font-size: 1.15rem; color: var(--text-soft); margin: 0; max-width: 70ch; }
+.index-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.25rem; }
+.index-stats .stat { display: flex; flex-direction: column; }
+.index-stats .stat .num { font-size: 1.7rem; font-weight: 800; color: var(--accent-text); line-height: 1; }
+.index-stats .stat .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-top: .3rem; }
+.index-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 1rem; margin: 1.75rem 0 0; }
+a.index-card { text-decoration: none; color: inherit; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); padding: 1.15rem 1.25rem; display: flex; flex-direction: column; gap: .55rem; box-shadow: var(--shadow); transition: transform .12s, box-shadow .12s, border-color .12s; }
+a.index-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--accent); text-decoration: none; }
+a.index-card .ic-title { font-size: 1.12rem; font-weight: 700; color: var(--text); font-family: var(--mono); }
+a.index-card .ic-desc { font-size: .9rem; color: var(--text-soft); line-height: 1.5; flex: 1 1 auto; }
+a.index-card .ic-badges { display: flex; flex-wrap: wrap; gap: .35rem; }
+a.index-card .ic-open { margin-top: .35rem; font-size: .8rem; font-weight: 700; color: var(--accent-text); display: inline-flex; align-items: center; gap: .3rem; }
+a.index-card .ic-open::after { content: "→"; transition: transform .12s; }
+a.index-card:hover .ic-open::after { transform: translateX(3px); }
+@media (max-width: 560px) { .index-wrap { padding: 1.5rem 1rem 3rem; } .index-grid { grid-template-columns: 1fr; } }
+
+  </style>
+</head>
+<body>
+  <div id="scrollProgress"></div>
+
+  <header class="doc-header">
+    <div class="brand">
+      <span class="kicker">Project Guide</span>
+      <span class="title">audio-glyph-inference</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="doc-search">
+      <input id="docSearch" type="search" placeholder="Search this guide…" aria-label="Search documentation">
+      <span class="search-count"></span>
+    </div>
+    <div class="btn-group">
+      <button class="btn" id="expandAll" title="Expand all sections"><span class="ico" style="-webkit-mask:var(--icon-expand) center/contain no-repeat;mask:var(--icon-expand) center/contain no-repeat"></span><span class="label">Expand</span></button>
+      <button class="btn" id="collapseAll" title="Collapse all sections"><span class="ico" style="-webkit-mask:var(--icon-collapse) center/contain no-repeat;mask:var(--icon-collapse) center/contain no-repeat"></span><span class="label">Collapse</span></button>
+      <button class="btn" id="themeToggle" title="Toggle light / dark"><span class="ico"></span></button>
+      <button class="btn" id="printBtn" title="Print / Save as PDF"><span class="ico" style="-webkit-mask:var(--icon-print) center/contain no-repeat;mask:var(--icon-print) center/contain no-repeat"></span></button>
+    </div>
+  </header>
+
+  <div class="doc-layout">
+    <nav class="doc-toc" id="docToc"><div class="toc-title">Contents</div></nav>
+
+    <main class="doc-content">
+      <div class="doc-content-inner">
+
+        <section class="doc-hero">
+          <h1>audio-glyph-inference</h1>
+          <p class="lede">A research-grade system that tries to infer a compact, interpretable, mathematically explicit transformation <code>F_θ</code> mapping the spoken sound of a Hebrew letter to its written glyph shape — recovering the algorithm itself, not the letter label.</p>
+          <div class="badge-row">
+            <span class="badge accent">Full-stack ML research</span>
+            <span class="badge green">Phases 1–5 buildable code landed</span>
+            <span class="badge purple">FastAPI + PyTorch + React/R3F</span>
+            <span class="badge">v0.0.x · pre-alpha</span>
+            <span class="badge">100% coverage gate</span>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item"><div class="meta-k">Backend</div><div class="meta-v">Python 3.11 · FastAPI · SQLAlchemy 2.0 async · NumPy/SciPy/Numba · PyTorch</div></div>
+            <div class="meta-item"><div class="meta-k">Frontend</div><div class="meta-v">React 18 · TS strict · Vite · Zustand · R3F · Chart.js</div></div>
+            <div class="meta-item"><div class="meta-k">Persistence</div><div class="meta-v">Postgres 16 · Redis 7 · JSONL ledgers</div></div>
+            <div class="meta-item"><div class="meta-k">Entry point</div><div class="meta-v">run_audio_glyph_inference.sh / .bat</div></div>
+            <div class="meta-item"><div class="meta-k">Ports</div><div class="meta-v">backend 8220 · frontend 5220 · pg 5520 · redis 6520</div></div>
+            <div class="meta-item"><div class="meta-k">Status</div><div class="meta-v">Code through Phase 5 scaffolding; empirical gates await real recordings</div></div>
+          </div>
+        </section>
+
+        <section class="doc-section" id="overview">
+          <details open>
+            <summary><span class="sec-num">1</span><h2>Overview — what this is &amp; why</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">A system-identification / operator-inference problem dressed as a Hebrew calligraphy toy: given audio in, glyph geometry out, find the simplest explicit operator that connects them.</p>
+
+              <p>The project asks a single, unusual research question. Given paired examples <code>(x_i, L_i)</code> of (spoken-letter audio, canonical glyph contour), is there a <strong>compact, interpretable, mathematically explicit transformation</strong> <code>F_θ : x(t) → G</code> that maps the audio waveform directly to the 2D glyph shape? The unknown object is the <em>algorithm itself</em> — a constrained parameter vector <code>θ</code> over an interpretable family (Fourier series, Lissajous curve, phase-space embedding, driven ODE, symbolic expression), <strong>not</strong> a black-box net and <strong>not</strong> a letter label.</p>
+
+              <div class="callout key"><div class="callout-title">The core constraint</div><div class="callout-body">The unknown is the transformation. The label is <em>known</em> at training time (it selects the target glyph <code>L_i</code>); the question is whether an explicit operator generalizes across accents. Whenever a change is tempted to "just make a letter look right," that is the exact failure mode the project is designed to avoid. A lookup-table-disguised-as-math is a bug, not a solution. See <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §0.</div></div>
+
+              <p>What it is <strong>NOT</strong>: not a classifier (phoneme → label); not a generative model (GAN/diffusion/latent → pixels) as the main solution; not a decorative visualization pipeline; not a phoneme → glyph lookup table. Neural nets are acceptable only as candidate <em>proposers</em> whose output is distilled into explicit symbolic math.</p>
+
+              <p>The fit is the regularized minimization</p>
+              <figure class="code"><figcaption>the one equation that matters · master plan §2</figcaption><pre><code>θ* = argmin_θ  Σ_i d(F_θ(x_i), L_i)  +  λ · Complexity(F_θ)</code></pre></figure>
+              <p>where <code>d(·,·)</code> is a shape distance (Procrustes by default), <code>λ</code> weights a complexity/MDL penalty, and the headline generalization test is <strong>leave-one-accent-out</strong>: a single speaker records each letter in five Hebrew pronunciation traditions, the operator is fitted on four accents, and it must produce the correct glyph geometry for the fifth. <strong>Negative results are an explicitly valid outcome</strong> — if no family generalizes, the project reports that with the search transcript.</p>
+
+              <div class="callout note"><div class="callout-title">Current state (read this carefully)</div><div class="callout-body">This is a mature multi-session project. The <strong>buildable code for Phases 1 through 5 is implemented and verified at 100% coverage</strong> (backend 426 tests, frontend 47 Vitest + 2 Playwright; see <code class="fileref" data-path="docs/status.md">docs/status.md</code>). What remains is <em>empirical</em>, not code: the maintainer must record + upload ~700 real <code>.m4a</code> samples (Stage 7), calibrate thresholds, run the searches, and do the browser live-loop pass. No successful operator and no negative result have been claimed. The header's older "Phase 1 scaffold-only" wording in <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §0 is stale prose — <code class="fileref" data-path="docs/status.md">docs/status.md</code> is the live truth.</div></div>
+
+              <div class="callout warn"><div class="callout-title">Version discrepancy to know about</div><div class="callout-body"><code class="fileref" data-path="backend/pyproject.toml">backend/pyproject.toml</code> reads <code>version = "0.1.0"</code> from an early <code>release: v0.1.0</code> git tag. That was premature — the pipeline has not run on real data. The intended pre-alpha version is <code>0.0.1</code> (next <code>0.0.2</code>). Resetting the field is maintainer/release-pipeline owned; the docs reflect the intended <code>0.0.x</code> line.</div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="status">
+          <details>
+            <summary><span class="sec-num">2</span><h2>Status &amp; at-a-glance</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">What works today (code + tests + Docker) versus what is gated on real-world data and manual testing.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Phase</th><th>Code status</th><th>Remaining gate</th></tr></thead>
+                <tbody>
+                  <tr><td>1 · Data pipeline</td><td>Implemented &amp; tested: audio upload + preprocess, glyph extraction, pairing, ORM + Alembic, API integration tests, Docker, launchers.</td><td>Upload ~700 real <code>.m4a</code>; reset package version to <code>0.0.1</code> before the real <code>0.1.0</code>.</td></tr>
+                  <tr><td>2 · Baseline search</td><td>Implemented on approved contracts: shape metrics, Fourier/Lissajous/phase-space families, <code>SearchEngine</code> (grid + CMA-ES), tracker, experiment/inference APIs, feasibility-probe core.</td><td>Calibrate <code>rho_min</code> + thresholds; run the exit-gate on Stage-7 data. Optional status/provenance schema fields await sign-off.</td></tr>
+                  <tr><td>3 · Expanded search</td><td>Implemented: dynamical-system ODE family, Bayesian strategy, symbolic-regression conversion + optional PySR proposal, leave-one-accent-out harness, leaderboards, negative-results renderer.</td><td>Run real leave-one-accent-out experiments; populate real tables.</td></tr>
+                  <tr><td>4 · Live UI</td><td>Implemented: MessagePack <code>/ws/live</code> route, React + R3F + Chart.js workspace, microphone capture, catalog discovery, score-rate readout; focused + browser smoke coverage.</td><td>Manual browser pass over all 27 glyph forms; confirm end-to-end render ≥ 10 Hz with real candidates.</td></tr>
+                  <tr><td>5 · Writeup</td><td>Prepared: <code>docs/writeup.md</code>, validated reproducibility manifest, Stage-7 dataset audit, report renderer, notebook, evidence templates.</td><td>Replace pending-data scaffolds with real leaderboards, cross-accent tables, verdicts, live-loop evidence.</td></tr>
+                </tbody>
+              </table></div>
+
+              <h3 class="anchor">Verification snapshot</h3>
+              <div class="meta-grid">
+                <div class="meta-item"><div class="meta-k">Backend tests</div><div class="meta-v">426 passed, 1 skipped · 100% coverage</div></div>
+                <div class="meta-item"><div class="meta-k">Frontend tests</div><div class="meta-v">47 Vitest · 2 Playwright (desktop/mobile)</div></div>
+                <div class="meta-item"><div class="meta-k">Lint</div><div class="meta-v">ruff clean · eslint clean</div></div>
+                <div class="meta-item"><div class="meta-k">Docker</div><div class="meta-v">4 services up; /health 200, frontend / 200</div></div>
+                <div class="meta-item"><div class="meta-k">Current version</div><div class="meta-v">0.0.1 intended (field reads 0.1.0)</div></div>
+                <div class="meta-item"><div class="meta-k">Backend image</div><div class="meta-v">~695 MB (CPU-only torch)</div></div>
+              </div>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="docs/status.md">docs/status.md</code><span class="filecard-desc">Live state, per-phase. The first doc to read in a session.</span></div>
+                <div class="filecard"><code class="fileref" data-path="docs/completion-audit.md">docs/completion-audit.md</code><span class="filecard-desc">Implemented-vs-blocked matrix and the maintainer-owned items.</span></div>
+                <div class="filecard"><code class="fileref" data-path="docs/versions.md">docs/versions.md</code><span class="filecard-desc">Semver-ordered changelog (newest at top).</span></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="tech-stack">
+          <details>
+            <summary><span class="sec-num">3</span><h2>Tech stack</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">A FastAPI numerics backend, a React/R3F live frontend, Postgres + Redis, all containerized. Every choice follows the owner's standing stack; rationale lives in <code class="fileref" data-path="docs/dependencies.md">docs/dependencies.md</code>.</p>
+
+              <h3 class="anchor">Backend</h3>
+              <div class="stack-grid">
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">Python</span><span class="stack-ver">3.11+</span></div><div class="stack-why"><code>from __future__ import annotations</code> everywhere; floor matches the slim Docker base and avoids wheel gaps.</div><div class="stack-foot"><code class="fileref" data-path="backend/pyproject.toml">backend/pyproject.toml</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">FastAPI + uvicorn</span><span class="stack-ver">0.110+</span></div><div class="stack-why">Async HTTP + WebSocket layer. <code>create_app()</code> factory; <code>python-multipart</code> for the upload endpoint.</div><div class="stack-foot"><code class="fileref" data-path="backend/src/api/main.py">backend/src/api/main.py</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">Pydantic v2</span><span class="stack-ver">2.6+</span></div><div class="stack-why">Every API contract + config schema; <code>pydantic-settings</code> for env-driven config.</div><div class="stack-foot"><code class="fileref dir" data-path="backend/src/models/">backend/src/models/</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">SQLAlchemy 2.0 async</span><span class="stack-ver">2.0.27+</span></div><div class="stack-why">Storage layer over <code>asyncpg</code>; Alembic migrations. Pydantic↔ORM wired with explicit <code>model_validate(row)</code>.</div><div class="stack-foot"><code class="fileref" data-path="backend/src/data/database.py">backend/src/data/database.py</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">NumPy · SciPy · Numba</span><span class="stack-ver">1.26 / 1.12 / 0.59</span></div><div class="stack-why">Vectorized numerics; <code>cKDTree</code> for Chamfer; Numba RK4 for the ODE family hot path.</div><div class="stack-foot"><code class="fileref dir" data-path="backend/src/simulation/">backend/src/simulation/</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">pycma</span><span class="stack-ver">3.3+</span></div><div class="stack-why">CMA-ES search strategy for continuous parameter spaces.</div><div class="stack-foot"><code class="fileref" data-path="backend/src/simulation/search_engine.py">backend/src/simulation/search_engine.py</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">librosa · soundfile · pyloudnorm · audioread</span><span class="stack-ver">0.10 / 0.12 / 0.1</span></div><div class="stack-why">Decode <code>.m4a</code> (via ffmpeg), resample, ITU-R BS.1770 loudness-normalize, VAD-trim.</div><div class="stack-foot"><code class="fileref" data-path="backend/src/simulation/audio_preprocessor.py">backend/src/simulation/audio_preprocessor.py</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">freetype-py · opencv-headless · shapely</span><span class="stack-ver">2.4 / 4.9 / 2.0</span></div><div class="stack-why">Render the STAM font glyph, trace external stroke contours, resample by arc-length.</div><div class="stack-foot"><code class="fileref" data-path="backend/src/simulation/glyph_extractor.py">backend/src/simulation/glyph_extractor.py</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">PyTorch + torchaudio</span><span class="stack-ver">2.2+ (CPU)</span></div><div class="stack-why">Standing DL dependency; pinned to <code>+cpu</code> wheels via <code>[tool.uv.sources]</code> to avoid multi-GB CUDA images.</div><div class="stack-foot"><code class="fileref" data-path="backend/pyproject.toml">backend/pyproject.toml</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">msgpack</span><span class="stack-ver">1.0.7+</span></div><div class="stack-why">Binary serialization for the live WebSocket numerical payloads.</div><div class="stack-foot"><code class="fileref" data-path="backend/src/api/routers/live.py">backend/src/api/routers/live.py</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">PySR + sympy (optional)</span><span class="stack-ver">[symbolic] extra</span></div><div class="stack-why">Phase-3 symbolic-regression <em>proposal</em> path; drags in Julia, so saved candidates still run without it.</div><div class="stack-foot"><code class="fileref" data-path="backend/src/simulation/symbolic_search.py">backend/src/simulation/symbolic_search.py</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">uv · ruff · pytest</span><span class="stack-ver">—</span></div><div class="stack-why">Package manager, lint/format (line-length 120, rules E/F/I/N/UP/ANN), test runner with 100% gate.</div><div class="stack-foot"><code class="fileref" data-path="backend/pyproject.toml">backend/pyproject.toml</code></div></div>
+              </div>
+
+              <h3 class="anchor">Frontend (Phase 4)</h3>
+              <div class="stack-grid">
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">React 18 + TS strict</span><span class="stack-ver">18.3 / 5.7</span></div><div class="stack-why">Live pronunciation workspace; strict mode, no <code>any</code>.</div><div class="stack-foot"><code class="fileref" data-path="frontend/src/App.tsx">frontend/src/App.tsx</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">Vite</span><span class="stack-ver">6</span></div><div class="stack-why">Dev/build tool; env via <code>VITE_*</code> baked at build time in the Docker image.</div><div class="stack-foot"><code class="fileref" data-path="frontend/vite.config.ts">frontend/vite.config.ts</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">Zustand</span><span class="stack-ver">5</span></div><div class="stack-why">Live session store (candidate/glyph ids, status, contours, score history).</div><div class="stack-foot"><code class="fileref" data-path="frontend/src/store/liveStore.ts">frontend/src/store/liveStore.ts</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">@react-three/fiber + drei</span><span class="stack-ver">8.17 / 9.122</span></div><div class="stack-why">Orthographic R3F overlay of target vs. generated contours.</div><div class="stack-foot"><code class="fileref" data-path="frontend/src/components/LiveCanvas.tsx">frontend/src/components/LiveCanvas.tsx</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">Chart.js + react-chartjs-2</span><span class="stack-ver">4.4 / 5.2</span></div><div class="stack-why">Score-history line chart + latest-distance-by-letter bar chart.</div><div class="stack-foot"><code class="fileref" data-path="frontend/src/components/ScoreChart.tsx">frontend/src/components/ScoreChart.tsx</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">@msgpack/msgpack</span><span class="stack-ver">3</span></div><div class="stack-why">Encodes configure/audio frames; decodes score frames over the raw WebSocket.</div><div class="stack-foot"><code class="fileref" data-path="frontend/src/utils/liveMessages.ts">frontend/src/utils/liveMessages.ts</code></div></div>
+                <div class="stack-card"><div class="stack-head"><span class="stack-name">Vitest + RTL + Playwright</span><span class="stack-ver">4.1 / 16 / 1.6</span></div><div class="stack-why">Unit/component coverage (100% on utils/components) + real-browser canvas smoke.</div><div class="stack-foot"><code class="fileref" data-path="frontend/playwright.config.ts">frontend/playwright.config.ts</code></div></div>
+              </div>
+
+              <div class="callout note"><div class="callout-title">Why pandas, Seaborn, not polars/plotly</div><div class="callout-body">Static analysis (Phase 5 notebook) uses pandas + matplotlib/Seaborn per the owner's standing preferences. Interactive viz is the React frontend's job, not Python's. PyTorch (not TensorFlow) is the standing DL framework even though it is only a latent dependency here.</div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="architecture">
+          <details>
+            <summary><span class="sec-num">4</span><h2>Architecture</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Backend computes, frontend renders. The backend is fully usable via API + scripts with no frontend; the simulation engines are standalone and importable without the API or a live DB.</p>
+
+              <figure class="diagram">
+                <div class="mermaid">
+graph TD
+    UPLOAD["m4a upload<br/>POST /api/datasets/audio"]
+    FONT["STAM font<br/>backend/data/fonts"]
+    PREP["AudioPreprocessor"]
+    GLYPH["GlyphExtractor"]
+    PG[("Postgres<br/>paired_examples +<br/>experiment_runs +<br/>candidates")]
+    REDIS[("Redis")]
+    FAM["transforms/*<br/>Fourier Lissajous ODE ..."]
+    SEARCH["SearchEngine<br/>grid cma-es bayesian symbolic"]
+    SCORE["shape_distance<br/>Procrustes Frechet Chamfer"]
+    TRACK["ExperimentTracker<br/>JSONL ledgers"]
+    API["FastAPI app"]
+    WS["/ws/live<br/>MessagePack"]
+    UI["React + R3F + Chart.js"]
+    MIC["Browser microphone"]
+
+    UPLOAD --> PREP --> PG
+    FONT --> GLYPH --> PG
+    PG --> SEARCH
+    FAM --> SEARCH
+    SCORE --> SEARCH
+    SEARCH --> PG
+    SEARCH --> TRACK
+    API --> PG
+    API --> REDIS
+    MIC --> UI --> WS
+    WS --> API
+    API --> WS --> UI
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>graph TD
+    UPLOAD["m4a upload POST /api/datasets/audio"] --> PREP["AudioPreprocessor"] --> PG[(Postgres)]
+    FONT["STAM font"] --> GLYPH["GlyphExtractor"] --> PG
+    PG --> SEARCH["SearchEngine"]
+    FAM["transforms/*"] --> SEARCH
+    SCORE["shape_distance"] --> SEARCH
+    SEARCH --> PG
+    SEARCH --> TRACK["ExperimentTracker JSONL"]
+    API["FastAPI"] --> PG
+    API --> REDIS[(Redis)]
+    MIC["Browser mic"] --> UI["React R3F Chart.js"] --> WS["/ws/live"]
+    WS --> API --> WS --> UI</code></pre></figure></div>
+                <figcaption>End-to-end topology. Three subsystems: a data pipeline (audio + glyph → paired examples), a search subsystem (families + metrics + engine → ranked candidates), and a live UI (mic → WebSocket → inferred geometry + score).</figcaption>
+              </figure>
+
+              <h3 class="anchor">The three data flows</h3>
+              <div class="flow"><span class="node">.m4a upload</span><span class="arrow">→</span><span class="node">decode/validate/frame</span><span class="arrow">→</span><span class="node">AudioSample row</span></div>
+              <div class="flow"><span class="node">letter</span><span class="arrow">→</span><span class="node">freetype render</span><span class="arrow">→</span><span class="node">contours .npz</span><span class="arrow">→</span><span class="node">GlyphTarget row</span></div>
+              <div class="flow"><span class="node">PairedExample slice</span><span class="arrow">→</span><span class="node">SearchEngine.fit</span><span class="arrow">→</span><span class="node">scored candidates</span><span class="arrow">→</span><span class="node">DB + JSONL ledger</span></div>
+
+              <h3 class="anchor">Backend module dependency graph</h3>
+              <figure class="diagram">
+                <div class="mermaid">
+graph LR
+    constants[constants.py]
+    config[config.py]
+    models[models/*]
+    orm[data/orm/*]
+    db[data/database.py]
+    prep[audio_preprocessor.py]
+    glyph[glyph_extractor.py]
+    feat[audio_features.py]
+    dist[shape_distance.py]
+    tbase[transforms/transform_base.py]
+    tfam[transforms/fourier,lissajous,...]
+    reg[transforms/family_registry.py]
+    search[search_engine.py]
+    track[experiment_tracker.py]
+    routers[api/routers/*]
+    api[api/main.py]
+
+    config --> prep
+    config --> glyph
+    constants --> models
+    constants --> glyph
+    models --> orm --> db
+    tbase --> tfam --> reg --> search
+    feat --> search
+    prep --> search
+    dist --> search
+    search --> track
+    models --> routers
+    db --> routers
+    reg --> routers
+    routers --> api
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>graph LR
+    config --> prep[audio_preprocessor]
+    config --> glyph[glyph_extractor]
+    constants --> models
+    models --> orm --> db
+    tbase[transform_base] --> tfam[families] --> reg[family_registry] --> search[search_engine]
+    feat[audio_features] --> search
+    prep --> search
+    dist[shape_distance] --> search
+    search --> track[experiment_tracker]
+    models --> routers --> api[api/main]
+    reg --> routers
+    db --> routers</code></pre></figure></div>
+                <figcaption><code>constants.py</code> and <code>config.py</code> are the only sources of literals; everything downstream reads from them, the DB, or data files.</figcaption>
+              </figure>
+
+              <div class="callout key"><div class="callout-title">Architectural invariants</div><div class="callout-body">
+                <strong>One concept per file</strong> — every Pydantic model, ORM row, and transform family is its own module. <strong>Standalone engines</strong> — nothing under <code class="fileref dir" data-path="backend/src/simulation/">backend/src/simulation/</code> imports the API or fetches from the DB; callers pass data in. <strong>Data-driven</strong> — only <code class="fileref" data-path="backend/src/constants.py">constants.py</code> holds domain literals; tunables live in <code class="fileref" data-path="backend/src/config.py">config.py</code>. <strong>Typed at the boundary</strong> — Pydantic owns API contracts, SQLAlchemy owns storage, wired by explicit <code>model_validate(row, from_attributes=True)</code>.
+              </div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="structure">
+          <details>
+            <summary><span class="sec-num">5</span><h2>Directory structure</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Standalone repo (no parent monorepo). Backend is a Python package under <code>backend/src/</code>; the frontend is a Vite app under <code>frontend/</code>; specs and audits live under <code>docs/</code>.</p>
+
+              <h3 class="anchor">Top level</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code><span class="filecard-desc">Claude-facing operational schema (contracts, phase rules). Mirrored by AGENTS.md for Codex.</span></div>
+                <div class="filecard"><code class="fileref" data-path="AGENTS.md">AGENTS.md</code><span class="filecard-desc">Codex entrypoint; kept in sync with CLAUDE.md.</span></div>
+                <div class="filecard"><code class="fileref" data-path="README.md">README.md</code><span class="filecard-desc">Human overview, architecture Mermaid, stack table, repo tour.</span></div>
+                <div class="filecard"><code class="fileref" data-path="docker-compose.yml">docker-compose.yml</code><span class="filecard-desc">postgres + redis + backend + frontend, with healthchecks and depends_on: service_healthy.</span></div>
+                <div class="filecard"><code class="fileref" data-path="run_audio_glyph_inference.sh">run_audio_glyph_inference.sh</code><span class="filecard-desc">macOS/Linux launcher with the [k]/[q]/[v]/[r] loop.</span></div>
+                <div class="filecard"><code class="fileref" data-path="run_audio_glyph_inference.bat">run_audio_glyph_inference.bat</code><span class="filecard-desc">Windows launcher with goto-based restart loop.</span></div>
+                <div class="filecard"><code class="fileref" data-path=".env.example">.env.example</code><span class="filecard-desc">Committed dev defaults: POSTGRES_* / REDIS_* / BACKEND_* / VITE_*.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path=".github/workflows/">.github/workflows/</code><span class="filecard-desc">GitHub Actions: ci.yml (lint → test → build → frontend → docker-build) + release.yml.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path=".codex/">.codex/</code><span class="filecard-desc">hooks.json + slash commands (scaffold, review, pre-commit, validate, phase-status, new-transform-family).</span></div>
+                <div class="filecard"><code class="fileref dir" data-path=".agents/skills/">.agents/skills/</code><span class="filecard-desc">Proactive protocol skills (phase-awareness, transform-protocol, data-driven-check, validation-protocol, frontend-protocol).</span></div>
+              </div>
+
+              <h3 class="anchor">docs/</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md">docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md</code><span class="filecard-desc">Authoritative: problem statement, data contracts §3, transform zoo, phases, gates.</span></div>
+                <div class="filecard"><code class="fileref" data-path="docs/recording_protocol.md">docs/recording_protocol.md</code><span class="filecard-desc">Locks audio duration/loudness/articulation/storage/validation the code enforces.</span></div>
+                <div class="filecard"><code class="fileref" data-path="docs/dependencies.md">docs/dependencies.md</code><span class="filecard-desc">Why each dependency + version was chosen.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="docs/phases/">docs/phases/</code><span class="filecard-desc">phase-{1..5}-plan.md task breakdowns + the phase-2 layer designs.</span></div>
+                <div class="filecard"><code class="fileref" data-path="docs/writeup.md">docs/writeup.md</code><span class="filecard-desc">Phase-5 research-note scaffold (pending real data).</span></div>
+                <div class="filecard"><code class="fileref" data-path="docs/negative-results.md">docs/negative-results.md</code><span class="filecard-desc">Generated negative-results report (pending-data state).</span></div>
+              </div>
+
+              <h3 class="anchor">backend/src/</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="backend/src/constants.py">backend/src/constants.py</code><span class="filecard-desc">Hebrew letters, glyph forms, accents, pronunciation variants, math constants.</span></div>
+                <div class="filecard"><code class="fileref" data-path="backend/src/config.py">backend/src/config.py</code><span class="filecard-desc">BackendSettings — every tunable (audio thresholds, search knobs, MDL weights).</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/src/api/">backend/src/api/</code><span class="filecard-desc">FastAPI app factory + routers + per-request dependencies + score_payload validator.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/src/models/">backend/src/models/</code><span class="filecard-desc">Pydantic domain models — one per file (AudioSample, GlyphTarget, ... ExperimentRun + result objects).</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/src/simulation/">backend/src/simulation/</code><span class="filecard-desc">All domain logic: preprocessor, extractor, metrics, features, search, tracker, transforms, probes.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/src/simulation/transforms/">backend/src/simulation/transforms/</code><span class="filecard-desc">TransformFamily protocol + the family zoo + ParameterSpec + registry + fittable mixin.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/src/data/">backend/src/data/</code><span class="filecard-desc">Async engine/session factory + SQLAlchemy ORM rows mirroring the Pydantic models.</span></div>
+              </div>
+
+              <h3 class="anchor">backend support + frontend</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref dir" data-path="backend/data/fonts/">backend/data/fonts/</code><span class="filecard-desc">StamAshkenazCLM.ttf (Culmus, GPL v2) + LICENSE + README, committed.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/scripts/">backend/scripts/</code><span class="filecard-desc">Operational scripts: seed_live_smoke, smoke_live_roundtrip, audit_stage7_dataset, render_phase5_report, feasibility_probe, evidence template.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/migrations/">backend/migrations/</code><span class="filecard-desc">Alembic env + 0001_baseline (3 P1 tables) + 0002_experiment_tables.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="backend/tests/">backend/tests/</code><span class="filecard-desc">Mirrors src/; real-Postgres integration via testcontainers; 100% coverage gate.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="frontend/src/">frontend/src/</code><span class="filecard-desc">App.tsx + components (LiveCanvas, ScoreChart) + store + utils + types.</span></div>
+                <div class="filecard"><code class="fileref" data-path="notebooks/phase5_reproducibility.ipynb">notebooks/phase5_reproducibility.ipynb</code><span class="filecard-desc">Manifest-backed reproducibility transcript + leaderboard DataFrame prep.</span></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="modules">
+          <details>
+            <summary><span class="sec-num">6</span><h2>Core modules &amp; engines</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">The heart of the system. Each engine is standalone and importable in isolation. Drill into any one below.</p>
+
+              <details class="sub">
+                <summary>AudioPreprocessor — raw recording → validated framed signal <span class="sub-tag">simulation/audio_preprocessor.py</span></summary>
+                <div class="sub-body">
+                  <p>Turns a user-uploaded <code>.m4a</code> into a clean, normalized, framed NumPy matrix. The pipeline (per <code class="fileref" data-path="docs/recording_protocol.md">docs/recording_protocol.md</code> §3/§7) is: decode → validate duration ∈ [1, 3] s → reject if peak &gt; −1 dBFS (clipped) → resample to 16 kHz → loudness-normalize to −23 LUFS (pyloudnorm / ITU-R BS.1770) → VAD-trim silence → validate active-speech span → frame with <code>librosa.util.frame</code>, clipped to <code>[-1, 1]</code>. Rejections raise <code>AudioValidationError</code>; thresholds come entirely from config, never hard-coded.</p>
+                  <figure class="code"><figcaption>backend/src/simulation/audio_preprocessor.py<span class="lang">python</span></figcaption><pre><code>resampled = librosa.resample(audio, orig_sr=native_sample_rate_hz, target_sr=self._sample_rate_hz)
+loudness = pyln.Meter(self._sample_rate_hz).integrated_loudness(resampled)
+normalized = pyln.normalize.loudness(resampled, loudness, self._target_lufs)
+trimmed, _ = librosa.effects.trim(normalized, top_db=self._vad_top_db)
+...
+frames = librosa.util.frame(trimmed, frame_length=self._frame_length, hop_length=self._hop_length).T
+frames = np.clip(frames.astype(np.float64), -1.0, 1.0)</code></pre></figure>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/audio_preprocessor.py">backend/src/simulation/audio_preprocessor.py</code><span class="filecard-desc">decode / preprocess / load.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/preprocess_result.py">backend/src/simulation/preprocess_result.py</code><span class="filecard-desc">PreprocessResult dataclass-style return (frames + native rate + duration + peak).</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/audio_validation_error.py">backend/src/simulation/audio_validation_error.py</code><span class="filecard-desc">Raised on any out-of-spec recording.</span></div>
+                  </div>
+                  <div class="callout note"><div class="callout-title">Reconstruct, don't store</div><div class="callout-body">Only the raw <code>.m4a</code> is persisted (Decision #10). The preprocessed signal is regenerated on demand — there is no <code>.wav</code> sidecar and no <code>wav_path</code> field. The experiments router rebuilds frames from the file path at search time.</div></div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>GlyphExtractor — STAM font glyph → ordered contour list <span class="sub-tag">simulation/glyph_extractor.py</span></summary>
+                <div class="sub-body">
+                  <p>Renders a Hebrew glyph form from <code>StamAshkenazCLM.ttf</code> with freetype-py, traces every external stroke with OpenCV (<code>RETR_EXTERNAL</code>, ordered largest-area first), resamples each closed contour by arc length (points allocated by perimeter share of a fixed budget), then jointly centers on the combined centroid, flips to y-up, and scales into the unit square <code>[-0.5, 0.5]</code>. An empirical 22-letter sweep showed 20 letters are single-stroke and <strong>ה / ק have a detached stroke</strong>; "largest contour only" would drop ~18% / ~29% of the ink, so the extractor returns an <em>ordered list</em> of contours (Decision #5 = Option C) and <code>GlyphTarget</code> carries <code>num_contours</code>.</p>
+                  <figure class="code"><figcaption>backend/src/simulation/glyph_extractor.py · joint normalization<span class="lang">python</span></figcaption><pre><code>centroid = np.vstack(contours).mean(axis=0)
+centered = [c - centroid for c in contours]
+for contour in centered:
+    contour[:, 1] *= -1.0  # image y is top-down; flip to math y-up
+scale = 0.5 / np.abs(np.vstack(centered)).max()
+return [c * scale for c in centered]</code></pre></figure>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/glyph_extractor.py">backend/src/simulation/glyph_extractor.py</code><span class="filecard-desc">render → external contours → resample-by-perimeter → joint normalize.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/contour_resample.py">backend/src/simulation/contour_resample.py</code><span class="filecard-desc">resample_closed — arc-length-uniform closed resampling (shared with families).</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/contour_normalize.py">backend/src/simulation/contour_normalize.py</code><span class="filecard-desc">normalize_to_unit_square — centroid-center + 0.5/max-abs.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/contour_io.py">backend/src/simulation/contour_io.py</code><span class="filecard-desc">save_contours / load_contours — the ordered .npz on disk.</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>shape_distance — d(F_θ(x), L) <span class="sub-tag">simulation/shape_distance.py</span></summary>
+                <div class="sub-body">
+                  <p>The three metrics in the objective, all taking two <code>(N, 2) float64</code> unit-square contours and returning a non-negative float (lower better, 0 = identical). <strong>Procrustes</strong> is the default fitness: full-Procrustes disparity after optimal similarity alignment (translation/scale/rotation invariant), with <em>reflection disabled because Hebrew letters are chiral</em>; it returns <code>1 - trace²</code>. <strong>Chamfer</strong> is symmetric mean nearest-neighbour distance via <code>cKDTree</code>, normalized by the unit-square diagonal <code>SQRT2</code>. <strong>Fréchet</strong> is discrete Eiter–Mannila DP minimized over cyclic start-shifts + winding reversal so it measures shape not parameterization phase. Chamfer/Fréchet are tiebreakers; never compare contours with <code>==</code>.</p>
+                  <figure class="code"><figcaption>backend/src/simulation/shape_distance.py · procrustes_distance<span class="lang">python</span></figcaption><pre><code>a = a / a_norm
+b = b / b_norm
+_, singular_values, _ = np.linalg.svd(a.T @ b)
+reflection = float(np.sign(np.linalg.det(b.T @ a)))
+trace = singular_values[0] + reflection * singular_values[1]
+return float(min(max(1.0 - trace * trace, 0.0), 1.0))</code></pre></figure>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/shape_distance.py">backend/src/simulation/shape_distance.py</code><span class="filecard-desc">procrustes / chamfer / frechet free functions.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/contour_compare.py">backend/src/simulation/contour_compare.py</code><span class="filecard-desc">Dispatches the three by metric name — the single helper engine + /api/inference share.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/batch_procrustes.py">backend/src/simulation/batch_procrustes.py</code><span class="filecard-desc">Vectorized batched Procrustes/Chamfer over (B, N, 2) for the search hot loop.</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>TransformFamily protocol + the family zoo <span class="sub-tag">simulation/transforms/</span></summary>
+                <div class="sub-body">
+                  <p>Every <code>F_θ</code> family implements one sacred protocol: <code>name()</code>, <code>parameter_space() → dict[str, ParameterSpec]</code>, <code>complexity(theta) → float</code>, and <code>forward(audio, theta) → (N, 2) float64</code> in the unit square. Families are <strong>stateless</strong> except for their type — all config (sample rate, raster size, point count) comes from <code>BackendSettings</code>, not from <code>__init__</code>.</p>
+                  <figure class="code"><figcaption>backend/src/simulation/transforms/transform_base.py<span class="lang">python</span></figcaption><pre><code>Theta = dict[str, float | int | list[float] | str]
+
+class TransformFamily(Protocol):
+    def name(self) -&gt; str: ...
+    def parameter_space(self) -&gt; dict[str, ParameterSpec]: ...
+    def complexity(self, theta: Theta) -&gt; float: ...
+    def forward(self, audio: np.ndarray, theta: Theta) -&gt; np.ndarray: ...</code></pre></figure>
+
+                  <div class="callout key"><div class="callout-title">Two-tier θ (the anti-lookup design)</div><div class="callout-body">For Fourier/Lissajous, θ has a <strong>searched</strong> tier (declared in <code>parameter_space()</code>, e.g. <code>rank_r</code>, <code>ridge_alpha</code>) and a <strong>fitted</strong> tier (affine vectors produced by a closed-form ridge least-squares in <code>SearchEngine</code>, carried as <code>list[float]</code>). The coefficients come from a <em>rank-r affine map</em> of the audio feature vector φ: <code>coeffs = U·(Vᵀφ) + b</code>. Low rank caps capacity so the operator structurally cannot memorize 22 letters as a soft lookup — the critique that flagged the original "affine ⇒ Lipschitz ⇒ not a lookup" reasoning as a disguised lookup is why this exists. See <code class="fileref" data-path="docs/phases/phase-2-plan.md">docs/phases/phase-2-plan.md</code> §3.1/§5.</div></div>
+
+                  <div class="table-wrap"><table class="doc-table">
+                    <thead><tr><th>Family</th><th>Phase</th><th>Idea</th><th>File</th></tr></thead>
+                    <tbody>
+                      <tr><td><code>fourier_series</code></td><td>2</td><td>Closed trig polynomial; 4K coefficients from a rank-r affine map of φ.</td><td><code class="fileref" data-path="backend/src/simulation/transforms/fourier_series.py">fourier_series.py</code></td></tr>
+                      <tr><td><code>lissajous</code></td><td>2</td><td>Coupled sinusoids, integer ratios (global), linear P·sin+Q·cos drivers from a small affine of φ.</td><td><code class="fileref" data-path="backend/src/simulation/transforms/lissajous.py">lissajous.py</code></td></tr>
+                      <tr><td><code>phase_space_embedding</code></td><td>2</td><td>Takens delay embedding of the reconstructed signal + rigid placement; no learned audio→param map.</td><td><code class="fileref" data-path="backend/src/simulation/transforms/phase_space_embedding.py">phase_space_embedding.py</code></td></tr>
+                      <tr><td><code>dynamical_system</code></td><td>3</td><td>Van der Pol / Duffing / resonator second-order ODE driven by audio, RK4-integrated.</td><td><code class="fileref" data-path="backend/src/simulation/transforms/dynamical_system.py">dynamical_system.py</code></td></tr>
+                      <tr><td><code>symbolic_regression</code></td><td>3</td><td>Safe scalar expressions over φ → Fourier coefficients; PySR-free at inference.</td><td><code class="fileref" data-path="backend/src/simulation/transforms/symbolic_regression.py">symbolic_regression.py</code></td></tr>
+                    </tbody>
+                  </table></div>
+
+                  <p>The <strong>Fourier</strong> <code>forward()</code> re-extracts φ from audio, reshapes the fitted affine vectors, applies <code>U·(Vᵀφ) + b</code> to get 4K coefficients, synthesizes a closed contour, and normalizes to the unit square — a pure function of <code>(audio, θ)</code> and config.</p>
+                  <figure class="code"><figcaption>backend/src/simulation/transforms/fourier_series.py · forward<span class="lang">python</span></figcaption><pre><code>rank_r = int(theta["rank_r"])
+b = np.asarray(theta["affine_b"], dtype=np.float64)
+u = np.asarray(theta["affine_u"], dtype=np.float64).reshape(b.size, rank_r)
+v = np.asarray(theta["affine_v"], dtype=np.float64).reshape(phi.size, rank_r)
+coeffs = u @ (v.T @ phi) + b
+return normalize_to_unit_square(_synthesize(coeffs, settings.glyph_contour_num_points))</code></pre></figure>
+
+                  <p>The <strong>dynamical-system</strong> family drives a second-order ODE with the reconstructed audio signal and integrates with a Numba RK4 hot path (excluded from line tracing because compiled bodies can't be traced; covered by behavioral + closed-form harmonic-oscillator tests).</p>
+                  <figure class="code"><figcaption>backend/src/simulation/transforms/dynamical_system.py · acceleration laws<span class="lang">python</span></figcaption><pre><code>if system_code == _VANDERPOL:
+    return drive_gain * drive + damping * (1.0 - nonlinearity * x * x) * v - stiffness * x
+if system_code == _DUFFING:
+    return drive_gain * drive - damping * v - stiffness * x - nonlinearity * x * x * x
+return drive_gain * drive - damping * v - stiffness * x   # resonator</code></pre></figure>
+
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/transforms/parameter_spec.py">transforms/parameter_spec.py</code><span class="filecard-desc">ParameterSpec — continuous / integer / categorical search-domain declaration.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/transforms/fittable_family.py">transforms/fittable_family.py</code><span class="filecard-desc">FittableFamily protocol — closed-form fit_theta for Fourier/Lissajous.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/transforms/family_registry.py">transforms/family_registry.py</code><span class="filecard-desc">FAMILY_REGISTRY + build_family(name) — constructs a stateless family by name.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/affine_fit.py">simulation/affine_fit.py</code><span class="filecard-desc">fit_fourier_theta — the closed-form ridge least-squares for the affine map.</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>SearchEngine — θ* = argmin mean d + λ·Complexity <span class="sub-tag">simulation/search_engine.py</span></summary>
+                <div class="sub-body">
+                  <p>The standalone optimizer. <code>fit(audio, targets, letters, accents, *, shared_across_letters, seed)</code> precomputes the feature matrix φ once, then runs one of four strategies over the <code>ParameterSpec</code> search space, fits the closed-form affine θ for fittable families, scores candidates with batched Procrustes/Chamfer (Chamfer-substituting for multi-stroke ה/ק), records the anti-lookup <code>lookup_ratio</code>, and returns <code>TransformCandidate</code>s sorted best-first.</p>
+                  <div class="table-wrap"><table class="doc-table">
+                    <thead><tr><th>Strategy</th><th>Mechanism</th></tr></thead>
+                    <tbody>
+                      <tr><td><code>grid</code></td><td>Cartesian product of per-axis grids; for Fourier, also sweeps K=1..k_max. Fails loud or seeded-shuffles when it exceeds <code>max_evaluations</code>.</td></tr>
+                      <tr><td><code>cma-es</code></td><td>pycma over a normalized <code>[0,1]^dim</code> genotype; continuous-only (rejects categorical/integer axes).</td></tr>
+                      <tr><td><code>bayesian</code></td><td>Deterministic Gaussian-process / expected-improvement over the same genotype decoder; mixed continuous/integer/categorical via <code>_decode</code>. NumPy + SciPy normal CDF only.</td></tr>
+                      <tr><td><code>symbolic-regression</code></td><td>Delegates to <code>symbolic_search.fit_symbolic_regression</code> (optional PySR proposal path); requires <code>SymbolicRegressionFamily</code>.</td></tr>
+                    </tbody>
+                  </table></div>
+                  <p>The objective adds the regularizer with a sharing multiplier that <em>penalizes per-letter tuning</em> — a single shared θ that works for all letters is structurally preferred over 22 letter-specific θ's.</p>
+                  <figure class="code"><figcaption>backend/src/simulation/search_engine.py · regularized objective<span class="lang">python</span></figcaption><pre><code>return candidate.mean_shape_distance + (
+    self.regularization_weight
+    * self.family.complexity(candidate.theta)
+    * self._sharing_multiplier(shared_across_letters, settings)
+)
+# sharing_multiplier: 1.0 if shared, else 1.0 + per_letter_penalty * NUM_HEBREW_LETTERS</code></pre></figure>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/search_engine.py">backend/src/simulation/search_engine.py</code><span class="filecard-desc">The engine: decode, grid/CMA/Bayesian, fit_theta, distances, candidate construction.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/batch_features.py">simulation/batch_features.py</code><span class="filecard-desc">compute_feature_matrix — φ for the whole batch.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/batch_synthesis.py">simulation/batch_synthesis.py</code><span class="filecard-desc">Batched Fourier/Lissajous synthesis from fitted θ.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/scoring.py">simulation/scoring.py</code><span class="filecard-desc">simplicity_score + interpretability_score (reporting-only; never in the objective).</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Audio features φ — the anti-lookup feature vector <span class="sub-tag">simulation/audio_features.py</span></summary>
+                <div class="sub-body">
+                  <p><code>extract_features</code> maps framed audio to φ ∈ ℝ²⁴ = [log-mel means | global spectral descriptors | per-time-third descriptors], pure NumPy. It is deliberately <strong>transient-retaining</strong> (per-segment descriptors) so φ is <em>not</em> a clean phoneme label — that would make the audio→glyph map a disguised lookup. Dimensionality is config-driven: <code>D = feature_n_mels + 4 + 4·feature_n_segments</code> (default 8 + 4 + 12 = 24). Short live windows reuse the nearest frame so per-segment descriptors stay finite.</p>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/audio_features.py">backend/src/simulation/audio_features.py</code><span class="filecard-desc">extract_features → φ.</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Anti-lookup diagnostics — lookup_ratio &amp; FeasibilityProbe <span class="sub-tag">simulation/lookup_ratio.py · feasibility_probe.py</span></summary>
+                <div class="sub-body">
+                  <p><code>lookup_ratio</code> is the standing anti-lookup diagnostic: after reflection-disabled similarity alignment, it computes <strong>within-letter variance / between-letter variance</strong> of the generated contours. Near 0 means the operator emits a per-letter constant (a lookup); <code>inf</code> means no between-letter variance. The <code>FeasibilityProbe</code> is the closed-form gate run <em>before</em> committing full search compute: it ridge-fits the affine-Fourier map on the non-held-out accents, scores the held-out accent against the probe and against per-letter / global constant baselines, and classifies the result.</p>
+                  <figure class="code"><figcaption>backend/src/simulation/feasibility_probe.py · verdict classifier<span class="lang">python</span></figcaption><pre><code>if d_probe_in &gt;= d_global_in - self.no_fit_tolerance:
+    return "NO_FIT"
+if r_track &lt; self.rho_min:
+    return "TRIVIAL_LOOKUP"
+if d_probe_out &gt; d_const_out + self.lookup_failure_margin:
+    return "TRIVIAL_LOOKUP"
+if d_probe_out &lt; d_const_out and overfit_ratio &lt; self.overfit_ratio_max:
+    return "FEASIBLE"
+return "TRIVIAL_LOOKUP"</code></pre></figure>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/lookup_ratio.py">simulation/lookup_ratio.py</code><span class="filecard-desc">Var_within / Var_between after alignment; shared by search + probe.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/feasibility_probe.py">simulation/feasibility_probe.py</code><span class="filecard-desc">FEASIBLE / TRIVIAL_LOOKUP / NO_FIT verdict (pending calibrated rho_min).</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/baseline_thresholds.py">simulation/baseline_thresholds.py</code><span class="filecard-desc">Unit-circle null + per-letter exit thresholds + exit-gate aggregator.</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Evaluation &amp; reporting — leave-one-accent-out, leaderboards, negative results <span class="sub-tag">simulation/*</span></summary>
+                <div class="sub-body">
+                  <p>The Phase-3/5 evaluation core. <code>evaluate_leave_one_accent_out</code> fits one shared candidate per held-out accent, scores the held-out fold by letter, and optionally attaches the exit-gate verdict. <code>build_family_leaderboards</code> replays JSONL ledgers into per-family rankings (shared candidates are the headline set). <code>render_negative_results_report</code> renders deterministic Markdown from those objects — a scaffold that does not claim a negative result before real Stage-7 evaluation.</p>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/leave_one_accent_out.py">simulation/leave_one_accent_out.py</code><span class="filecard-desc">The headline cross-accent generalization harness.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/leaderboard.py">simulation/leaderboard.py</code><span class="filecard-desc">JSONL replay → per-family LeaderboardEntry rows.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/negative_results.py">simulation/negative_results.py</code><span class="filecard-desc">Deterministic Markdown renderer over leaderboards + LOAO + exit-gate + probe.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="backend/src/simulation/experiment_tracker.py">simulation/experiment_tracker.py</code><span class="filecard-desc">JSONL ledger writer/reader (one .jsonl per run; create=False for read-only).</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Live frontend — App.tsx + LiveCanvas + ScoreChart + liveStore <span class="sub-tag">frontend/src/</span></summary>
+                <div class="sub-body">
+                  <p>The Phase-4 live pronunciation workspace. <code>App.tsx</code> loads the catalog (glyph targets + completed-run best candidates), opens the WebSocket, waits for a <code>configured</code> ack that echoes both the candidate and glyph ids, then captures microphone audio via a <code>ScriptProcessorNode</code>, encodes PCM16 frames with MessagePack, and streams them. Incoming <code>score</code> frames feed the Zustand store, which drives the R3F overlay and Chart.js dashboard. A large amount of the code is defensive lifecycle management (duplicate-connect/start guards, socket-drop cleanup, malformed-response cleanup, audio-graph failure recovery) — all covered by focused component tests.</p>
+                  <figure class="code"><figcaption>frontend/src/App.tsx · microphone → MessagePack PCM16<span class="lang">tsx</span></figcaption><pre><code>processor.onaudioprocess = (event) =&gt; {
+  const socket = socketRef.current;
+  if (socket?.readyState !== WebSocket.OPEN) return;
+  const samples = event.inputBuffer.getChannelData(0);
+  socket.send(encodeAudio({ type: "audio", sample_rate_hz: SAMPLE_RATE_HZ, pcm16: floatToPcm16(samples) }));
+};</code></pre></figure>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="frontend/src/App.tsx">frontend/src/App.tsx</code><span class="filecard-desc">Connect/configure handshake, mic capture, socket lifecycle, toolbar.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="frontend/src/components/LiveCanvas.tsx">frontend/src/components/LiveCanvas.tsx</code><span class="filecard-desc">R3F orthographic overlay; target vs. generated lines, z-separated, singleton suppression.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="frontend/src/components/ScoreChart.tsx">frontend/src/components/ScoreChart.tsx</code><span class="filecard-desc">Chart.js score-history line + latest-distance-by-letter bar.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="frontend/src/store/liveStore.ts">frontend/src/store/liveStore.ts</code><span class="filecard-desc">Zustand store; acceptScore appends to a 120-sample rolling history.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="frontend/src/utils/liveMessages.ts">frontend/src/utils/liveMessages.ts</code><span class="filecard-desc">encodeConfigure / encodeAudio / decodeLiveResponse / toPoints.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="frontend/src/utils/apiCatalog.ts">frontend/src/utils/apiCatalog.ts</code><span class="filecard-desc">Fetches glyph targets + candidate options; rejects malformed array-shaped payloads.</span></div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="data-model">
+          <details>
+            <summary><span class="sec-num">7</span><h2>Data models &amp; contracts</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">The six core shapes are <em>sacred</em>: they appear field-for-field in Pydantic models, SQLAlchemy ORM rows, API responses, and (Phase 4) TypeScript interfaces. Changing any field is a major semver bump. Defined in <code class="fileref" data-path="docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md">master plan</code> §3.</p>
+
+              <figure class="diagram">
+                <div class="mermaid">
+erDiagram
+    AudioSample ||--o{ PairedExample : "audio_sample_id"
+    GlyphTarget ||--o{ PairedExample : "glyph_target_id"
+    ExperimentRun ||--o{ TransformCandidate : "produces"
+    ExperimentRun ||--o| TransformCandidate : "best_candidate_id"
+    AudioSample {
+      uuid id
+      str letter
+      str accent
+      str pronunciation_variant
+      int repetition
+      str file_path
+    }
+    GlyphTarget {
+      uuid id
+      str letter
+      str glyph_form
+      str contour_path
+      int num_contours
+    }
+    PairedExample {
+      uuid id
+      uuid audio_sample_id
+      uuid glyph_target_id
+      str split
+    }
+    TransformCandidate {
+      uuid id
+      str family
+      json theta
+      float mean_shape_distance
+      float lookup_ratio
+    }
+    ExperimentRun {
+      uuid id
+      str family
+      str search_strategy
+      str held_out_accent
+      int rng_seed
+    }
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>erDiagram
+    AudioSample ||--o{ PairedExample : audio_sample_id
+    GlyphTarget ||--o{ PairedExample : glyph_target_id
+    ExperimentRun ||--o{ TransformCandidate : produces
+    ExperimentRun ||--o| TransformCandidate : best_candidate_id</code></pre></figure></div>
+                <figcaption>Three Phase-1 tables (audio_samples, glyph_targets, paired_examples) + two Phase-2 tables (experiment_runs, transform_candidates).</figcaption>
+              </figure>
+
+              <h3 class="anchor">AudioSample</h3>
+              <p>One raw recording of one spoken base-letter pronunciation variant. Uniqueness is <code>(speaker_id, accent, letter, pronunciation_variant, repetition)</code> — enforced by the ORM row (second-precision timestamps can't disambiguate takes).</p>
+              <dl class="doc-dl">
+                <dt>letter</dt><dd>Base letter, one of <code>constants.HEBREW_LETTERS</code> (22).</dd>
+                <dt>accent</dt><dd>One of <code>ashkenazi / sephardi / moroccan / yemenite / chabad</code> — the primary generalization axis.</dd>
+                <dt>pronunciation_variant</dt><dd><code>plain / hard / soft</code>; begadkefat letters (ב ג ד כ פ ת) use hard/soft, all others plain.</dd>
+                <dt>repetition</dt><dd>1-based take number within a recording block.</dd>
+                <dt>file_path</dt><dd>Absolute path to the raw <code>.m4a</code> inside the container (no <code>.wav</code> sidecar).</dd>
+              </dl>
+              <div class="filelist"><div class="filecard"><code class="fileref" data-path="backend/src/models/audio_sample.py">models/audio_sample.py</code><span class="filecard-desc">Pydantic model.</span></div><div class="filecard"><code class="fileref" data-path="backend/src/data/orm/audio_sample_row.py">data/orm/audio_sample_row.py</code><span class="filecard-desc">ORM row + UniqueConstraint.</span></div></div>
+
+              <h3 class="anchor">GlyphTarget</h3>
+              <p>Canonical 2D target shape for one written glyph form (22 regular + 5 sofit = 27). Coordinates are always unit-square <code>[-0.5, 0.5]</code> centroid-origin, stored as an ordered-stroke <code>.npz</code>. <code>num_contours &gt; 1</code> for ה / ק.</p>
+              <div class="filelist"><div class="filecard"><code class="fileref" data-path="backend/src/models/glyph_target.py">models/glyph_target.py</code><span class="filecard-desc">letter, glyph_form, font_name, raster_size_px, contour_path, num_points, num_contours.</span></div><div class="filecard"><code class="fileref" data-path="backend/src/data/orm/glyph_target_row.py">data/orm/glyph_target_row.py</code><span class="filecard-desc">ORM row.</span></div></div>
+
+              <h3 class="anchor">PairedExample</h3>
+              <p>Atomic training unit: one audio sample bound to one glyph target. <code>letter / pronunciation_variant / glyph_form</code> are denormalized for query convenience. <code>split</code> is <strong>accent-disjoint</strong> (<code>train / val / test</code>) — the leave-one-accent-out test.</p>
+              <div class="filelist"><div class="filecard"><code class="fileref" data-path="backend/src/models/paired_example.py">models/paired_example.py</code><span class="filecard-desc">Pydantic model.</span></div><div class="filecard"><code class="fileref" data-path="backend/src/models/paired_example_create.py">models/paired_example_create.py</code><span class="filecard-desc">POST request body.</span></div></div>
+
+              <h3 class="anchor">TransformCandidate &amp; ExperimentRun</h3>
+              <p>A <code>TransformCandidate</code> is a frozen <code>F_θ</code>: <code>family</code>, <code>theta</code> (<code>dict[str, float|int|list[float]|str]</code>, JSONB), optional <code>expression</code> (symbolic), <code>shared_across_letters</code>, <code>interpretability_score</code>, <code>simplicity_score</code>, <code>mean_shape_distance</code>, and the anti-lookup <code>lookup_ratio</code>. An <code>ExperimentRun</code> is one configured search and records full reproducibility state: <code>search_strategy</code>, <code>scoring_metric</code>, <code>regularization_weight</code> (λ), <code>held_out_accent</code>, <code>rng_seed</code>, <code>font_name</code>, and a flattened <code>config_snapshot</code> of <code>BackendSettings</code>.</p>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="backend/src/models/transform_candidate.py">models/transform_candidate.py</code><span class="filecard-desc">The candidate contract.</span></div>
+                <div class="filecard"><code class="fileref" data-path="backend/src/models/experiment_run.py">models/experiment_run.py</code><span class="filecard-desc">The run contract (Literal search/metric vocabularies).</span></div>
+                <div class="filecard"><code class="fileref" data-path="backend/src/data/orm/experiment_run_row.py">data/orm/experiment_run_row.py</code><span class="filecard-desc">ORM row (JSONB config_snapshot/theta).</span></div>
+                <div class="filecard"><code class="fileref" data-path="frontend/src/types/apiModels.ts">frontend/src/types/apiModels.ts</code><span class="filecard-desc">TS interfaces mirroring all six contracts.</span></div>
+              </div>
+
+              <div class="callout danger"><div class="callout-title">Do not silently change a contract</div><div class="callout-body">Field names/types/nullability in master plan §3 are binding across Pydantic, ORM, API, and TS. A change must update the master plan first, then the model, ORM, and tests — and it's a major semver bump (ask first). "Simplifying" a contract for convenience is forbidden.</div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="key-logic">
+          <details>
+            <summary><span class="sec-num">8</span><h2>Key logic &amp; formulas</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">The math that carries the research question, in plain language and tied to code.</p>
+
+              <h3 class="anchor">1 · The fit</h3>
+              <p>For a family <code>F_θ</code>, a dataset slice, a shape distance <code>d</code>, and a complexity regularizer, the search minimizes <code>θ* = argmin_θ Σ d(F_θ(x_i), L_i) + λ·Complexity(F_θ)</code>. The sum is over the training slice; λ is config-set (<code>regularization_weight</code>), never hard-coded; <code>Complexity</code> is the family's declared MDL-style penalty. Implemented in <code class="fileref" data-path="backend/src/simulation/search_engine.py">search_engine.py</code>.</p>
+
+              <h3 class="anchor">2 · Audio preprocessing chain</h3>
+              <figure class="code"><figcaption>master plan §9.3 · implemented in audio_preprocessor.py<span class="lang">text</span></figcaption><pre><code>.m4a (AAC-in-MP4)
+  -&gt; librosa.load(sr=None) -&gt; audioread -&gt; ffmpeg
+  -&gt; validate duration in [1.0, 3.0] s, peak &lt;= -1 dBFS
+  -&gt; resample to 16000 Hz
+  -&gt; loudness-normalize to -23 LUFS (pyloudnorm / ITU-R BS.1770)
+  -&gt; VAD trim leading/trailing silence
+  -&gt; validate active-speech span in [0.4, 1.5] s
+  -&gt; frame into (num_frames, frame_length) hop=128
+  -&gt; ndarray float64 in [-1, 1]</code></pre></figure>
+
+              <h3 class="anchor">3 · Glyph extraction chain</h3>
+              <figure class="code"><figcaption>master plan §9.4 · implemented in glyph_extractor.py<span class="lang">text</span></figcaption><pre><code>letter -&gt; load StamAshkenazCLM.ttf
+       -&gt; render to 256px raster (freetype-py)
+       -&gt; binarize
+       -&gt; cv2.findContours(RETR_EXTERNAL) ordered largest-area first
+       -&gt; arc-length-uniform resample (256 points by perimeter share)
+       -&gt; center on combined centroid, flip y-up, scale jointly into [-0.5, 0.5]
+       -&gt; list[(n_i, 2) float64]   (1 for most; 2 for ה / ק)</code></pre></figure>
+
+              <h3 class="anchor">4 · Shape distances</h3>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Metric</th><th>Properties</th><th>Role</th></tr></thead>
+                <tbody>
+                  <tr><td><code>procrustes_distance</code></td><td>Full-Procrustes after similarity alignment; reflection disabled (chiral); returns <code>1 − trace²</code>.</td><td>Default fitness.</td></tr>
+                  <tr><td><code>chamfer_distance</code></td><td>Symmetric mean NN distance (cKDTree), SQRT2-normalized.</td><td>Sampling-robustness tiebreaker + multi-stroke substitute.</td></tr>
+                  <tr><td><code>frechet_distance</code></td><td>Discrete Fréchet over cyclic shifts + reversal, SQRT2-normalized.</td><td>Stroke-order tiebreaker (report-only).</td></tr>
+                </tbody>
+              </table></div>
+
+              <h3 class="anchor">5 · The anti-lookup ratio</h3>
+              <p>Computed after reflection-disabled similarity alignment of the generated contours: <code>lookup_ratio = mean_letter( Var_within ) / Var_between</code>. A small ratio means the operator produces a near-constant contour per letter — i.e. it has degenerated into a lookup table — which the feasibility probe flags as <code>TRIVIAL_LOOKUP</code>. This is the single most important guardrail against the project's stated failure mode. Implemented in <code class="fileref" data-path="backend/src/simulation/lookup_ratio.py">lookup_ratio.py</code>.</p>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="api">
+          <details>
+            <summary><span class="sec-num">9</span><h2>APIs, endpoints &amp; the live protocol</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">REST for setup/queries, a binary WebSocket for the live loop. OpenAPI auto-docs at <code>/docs</code>.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Method</th><th>Path</th><th>Purpose</th><th>File</th></tr></thead>
+                <tbody>
+                  <tr><td>GET</td><td><code>/health</code></td><td>Liveness/readiness (Docker healthcheck).</td><td><code class="fileref" data-path="backend/src/api/routers/health.py">health.py</code></td></tr>
+                  <tr><td>POST</td><td><code>/api/datasets/audio</code></td><td>Multipart <code>.m4a</code> + form fields → validate → store → AudioSample. 409 on duplicate take.</td><td><code class="fileref" data-path="backend/src/api/routers/datasets.py">datasets.py</code></td></tr>
+                  <tr><td>POST</td><td><code>/api/datasets/glyphs</code></td><td>Render a glyph form → <code>.npz</code> → GlyphTarget.</td><td><code class="fileref" data-path="backend/src/api/routers/datasets.py">datasets.py</code></td></tr>
+                  <tr><td>GET</td><td><code>/api/datasets/glyphs</code></td><td>List glyph targets (letter/glyph_form filters + pagination).</td><td><code class="fileref" data-path="backend/src/api/routers/datasets.py">datasets.py</code></td></tr>
+                  <tr><td>POST</td><td><code>/api/datasets/pairs</code></td><td>Associate audio + glyph (same-letter guard) → PairedExample.</td><td><code class="fileref" data-path="backend/src/api/routers/datasets.py">datasets.py</code></td></tr>
+                  <tr><td>GET</td><td><code>/api/datasets/pairs</code></td><td>List pairs (split/letter/variant/glyph_form/accent filters + pagination).</td><td><code class="fileref" data-path="backend/src/api/routers/datasets.py">datasets.py</code></td></tr>
+                  <tr><td>POST</td><td><code>/api/experiments</code></td><td>Run a transform-family search synchronously; persist run + candidates + JSONL ledger.</td><td><code class="fileref" data-path="backend/src/api/routers/experiments.py">experiments.py</code></td></tr>
+                  <tr><td>GET</td><td><code>/api/experiments</code></td><td>List runs (family/strategy/held_out_accent/derived-status filters).</td><td><code class="fileref" data-path="backend/src/api/routers/experiments.py">experiments.py</code></td></tr>
+                  <tr><td>GET</td><td><code>/api/experiments/{id}</code></td><td>Fetch a run + its best candidate + candidate count (recovered from JSONL).</td><td><code class="fileref" data-path="backend/src/api/routers/experiments.py">experiments.py</code></td></tr>
+                  <tr><td>POST</td><td><code>/api/inference</code></td><td>One-shot: score an audio sample against a candidate (shared finite-geometry validation).</td><td><code class="fileref" data-path="backend/src/api/routers/inference.py">inference.py</code></td></tr>
+                  <tr><td>WS</td><td><code>/ws/live</code></td><td>Live pronunciation loop; MessagePack binary frames.</td><td><code class="fileref" data-path="backend/src/api/routers/live.py">live.py</code></td></tr>
+                </tbody>
+              </table></div>
+
+              <div class="callout note"><div class="callout-title">Search runs synchronously, off the event loop</div><div class="callout-body"><code>POST /api/experiments</code> materializes the dataset and runs <code>engine.fit</code> via <code>anyio.to_thread.run_sync</code> so the CPU-heavy search doesn't block the async loop. Because the optional Layer-7 status/provenance schema fields are unsigned, run status is derived from <code>completed_at</code> and candidate count is recovered from the JSONL ledger.</div></div>
+
+              <h3 class="anchor">The /ws/live MessagePack protocol</h3>
+              <figure class="diagram">
+                <div class="mermaid">
+sequenceDiagram
+    participant UI as React UI
+    participant WS as /ws/live
+    participant DB as Postgres
+    UI->>WS: configure {candidate_id, glyph_target_id, scoring_metric}
+    WS->>DB: load candidate row + glyph contours
+    WS-->>UI: configured {candidate_id, glyph_target_id}
+    loop microphone frames
+      UI->>WS: audio {sample_rate_hz, pcm16 bytes}
+      WS->>WS: family.forward(frames, theta) + contour_compare
+      WS-->>UI: score {contours, target_contours, shape_distance}
+    end
+    Note over WS,UI: protocol errors -> binary error frame, socket stays usable
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>sequenceDiagram
+    UI->>WS: configure {candidate_id, glyph_target_id, scoring_metric}
+    WS->>DB: load candidate + glyph contours
+    WS-->>UI: configured {candidate_id, glyph_target_id}
+    loop frames
+      UI->>WS: audio {sample_rate_hz, pcm16}
+      WS-->>UI: score {contours, target_contours, shape_distance}
+    end</code></pre></figure></div>
+                <figcaption>The live handshake. Errors (malformed bytes, non-string map keys, bad UUIDs, text frames, non-finite scores) return a binary <code>error</code> frame without tearing down the socket.</figcaption>
+              </figure>
+              <figure class="code"><figcaption>backend/src/api/routers/live.py · audio frame → score<span class="lang">python</span></figcaption><pre><code>generated = family.forward(frames, candidate.theta)
+distance = contour_compare(generated, target, metric)
+score_payload = _score_payload(generated, target, distance)  # validates finite geometry
+await websocket.send_bytes(_pack_message(score_payload))</code></pre></figure>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="config">
+          <details>
+            <summary><span class="sec-num">10</span><h2>Configuration &amp; environment</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">All tunables live in <code class="fileref" data-path="backend/src/config.py">BackendSettings</code> (env-prefixed <code>BACKEND_</code>). Ports + credentials come from <code class="fileref" data-path=".env.example">.env</code> via <code>${VAR:-default}</code> substitution in compose.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Variable</th><th>Default</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>BACKEND_PORT</code></td><td><code>8220</code></td><td>FastAPI host port (container listens on 8000).</td></tr>
+                  <tr><td><code>VITE_PORT</code></td><td><code>5220</code></td><td>Frontend host port (nginx serves on 80).</td></tr>
+                  <tr><td><code>POSTGRES_PORT</code></td><td><code>5520</code></td><td>Postgres host port.</td></tr>
+                  <tr><td><code>REDIS_PORT</code></td><td><code>6520</code></td><td>Redis host port.</td></tr>
+                  <tr><td><code>BACKEND_DATABASE_URL</code></td><td><code>postgresql+asyncpg://agi_dev:…@postgres:5432/…</code></td><td>Async SQLAlchemy URL.</td></tr>
+                  <tr><td><code>BACKEND_AUDIO_DURATION_MIN_S / MAX_S</code></td><td><code>1.0 / 3.0</code></td><td>Accepted recording duration window.</td></tr>
+                  <tr><td><code>BACKEND_AUDIO_TARGET_LUFS</code></td><td><code>-23.0</code></td><td>Loudness normalization target.</td></tr>
+                  <tr><td><code>BACKEND_AUDIO_SAMPLE_RATE_HZ</code></td><td><code>16000</code></td><td>Resample target; must match the live frontend rate.</td></tr>
+                  <tr><td><code>BACKEND_GLYPH_RASTER_SIZE_PX / CONTOUR_NUM_POINTS</code></td><td><code>256 / 256</code></td><td>Glyph render resolution and contour budget.</td></tr>
+                  <tr><td><code>BACKEND_FEATURE_N_MELS / N_SEGMENTS</code></td><td><code>8 / 3</code></td><td>φ feature dimensionality (D = 8 + 4 + 12 = 24).</td></tr>
+                  <tr><td><code>BACKEND_SEARCH_DEFAULT_LAMBDA</code></td><td><code>0.01</code></td><td>λ on the complexity term.</td></tr>
+                  <tr><td><code>BACKEND_FOURIER_K_MAX / CMA_SIGMA0 / BAYESIAN_*</code></td><td>various</td><td>Search strategy knobs (placeholders pending kickoff calibration).</td></tr>
+                  <tr><td><code>VITE_API_BASE_URL / VITE_WS_URL</code></td><td><code>http://localhost:8220 / ws://…/ws/live</code></td><td>Baked into the frontend image at build time.</td></tr>
+                </tbody>
+              </table></div>
+
+              <div class="callout warn"><div class="callout-title">Calibration placeholders</div><div class="callout-body">The MDL complexity weights and several search knobs default to <code>1.0</code>-ish placeholders and are only frozen after the first real-data Procrustes-scale check. They scale <code>λ·Complexity</code> but do not change the structure of the search.</div></div>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="backend/src/config.py">backend/src/config.py</code><span class="filecard-desc">BackendSettings — the full env-driven loader.</span></div>
+                <div class="filecard"><code class="fileref" data-path="backend/src/config_snapshot.py">backend/src/config_snapshot.py</code><span class="filecard-desc">Flattens settings into ExperimentRun.config_snapshot for reproducibility.</span></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="run">
+          <details>
+            <summary><span class="sec-num">11</span><h2>How to run it</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Docker is the primary path; a backend-only no-Docker loop exists for TDD. See <code class="fileref" data-path="docs/run_guide.md">docs/run_guide.md</code>.</p>
+
+              <h3 class="anchor">Docker (primary)</h3>
+              <ol class="steps">
+                <li>Copy <code class="fileref" data-path=".env.example">.env.example</code> to <code>.env</code> (defaults work out of the box).</li>
+                <li>Run <code class="fileref" data-path="run_audio_glyph_inference.sh">run_audio_glyph_inference.sh</code> (macOS/Linux) or <code class="fileref" data-path="run_audio_glyph_inference.bat">run_audio_glyph_inference.bat</code> (Windows).</li>
+                <li>The launcher runs <code>docker compose up --build -d</code>, polls <code>/health</code> until ready, prints the URLs, and enters the <code>[k]/[q]/[v]/[r]</code> loop.</li>
+                <li>Open the frontend at <code>http://localhost:5220</code>; API docs at <code>http://localhost:8220/docs</code>.</li>
+              </ol>
+              <dl class="doc-dl">
+                <dt>[r]</dt><dd>Full restart — down then up --build (keeps images). Repeatable.</dd>
+                <dt>[k]</dt><dd>Stop, keep images (terminal).</dd>
+                <dt>[q]</dt><dd>Stop + remove project images, keep volumes (terminal).</dd>
+                <dt>[v]</dt><dd>Stop + remove images + volumes (terminal).</dd>
+              </dl>
+
+              <h3 class="anchor">Backend only (no Docker)</h3>
+              <figure class="code"><figcaption>CLAUDE.md §12<span class="lang">bash</span></figcaption><pre><code>cd backend
+uv venv
+uv pip install -e '.[dev]'
+uv run uvicorn src.api.main:app --reload --port 8220
+uv run pytest                 # full suite, 100% gate
+uv run ruff check . &amp;&amp; uv run ruff format .</code></pre></figure>
+              <div class="callout note"><div class="callout-title">Seeding a fresh DB for the live UI</div><div class="callout-body">Before any real experiment exists, <code class="fileref" data-path="backend/scripts/seed_live_smoke.py">seed_live_smoke.py</code> seeds all 27 glyph targets plus one clearly non-empirical completed <code>lissajous</code> candidate so the browser catalog and WebSocket round-trip work. Then <code class="fileref" data-path="backend/scripts/smoke_live_roundtrip.py">smoke_live_roundtrip.py</code> drives <code>/ws/live</code> once per glyph. Run inside the container: <code>docker compose exec backend python scripts/seed_live_smoke.py</code>.</div></div>
+              <div class="callout warn"><div class="callout-title">Postgres/Redis needed without Docker</div><div class="callout-body">When testing without Docker, point <code>BACKEND_DATABASE_URL</code> / <code>BACKEND_REDIS_URL</code> at running instances. Integration tests spin up a real Postgres via testcontainers — the database is never mocked.</div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="editing">
+          <details>
+            <summary><span class="sec-num">12</span><h2>How to edit &amp; extend it</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Practical, owner-focused recipes. Always start a session by reading <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> → master plan → <code class="fileref" data-path="docs/status.md">status.md</code> → the current phase plan, then the files you'll touch.</p>
+
+              <details class="sub">
+                <summary>Add a new transform family F_θ</summary>
+                <div class="sub-body">
+                  <p>The most common extension. Use <code class="fileref" data-path=".codex/commands/new-transform-family.md">/new-transform-family</code> to scaffold, then:</p>
+                  <ol class="steps">
+                    <li>Create <code>backend/src/simulation/transforms/&lt;family&gt;.py</code> implementing the four protocol methods (<code>name</code>, <code>parameter_space</code>, <code>complexity</code>, <code>forward</code>). <code>forward</code> must return <code>(N, 2) float64</code> in <code>[-0.5, 0.5]</code> and be a pure function of <code>(audio, theta)</code> + config — no globals, no I/O, no unseeded RNG.</li>
+                    <li>Register it in <code class="fileref" data-path="backend/src/simulation/transforms/family_registry.py">family_registry.py</code> (<code>FAMILY_REGISTRY</code>).</li>
+                    <li>If it needs closed-form fitting, also implement <code class="fileref" data-path="backend/src/simulation/transforms/fittable_family.py">FittableFamily.fit_theta</code> and a batched synthesizer; otherwise <code>SearchEngine._generate</code> falls back to per-sample <code>forward</code>.</li>
+                    <li>Add an interpretability prior in <code>SearchEngine._family_prior</code> + a config knob (default 1.0).</li>
+                    <li>Declare every <em>searched</em> θ key in <code>parameter_space()</code> as a <code>ParameterSpec</code>; declare config-driven tunables in <code class="fileref" data-path="backend/src/config.py">config.py</code> — never hard-code numbers.</li>
+                    <li>Add <code>backend/tests/simulation/transforms/test_&lt;family&gt;.py</code> with at least one <strong>reference-value</strong> test (a closed-form input with a known output) — a test that asserts the engine equals the engine is not a test.</li>
+                  </ol>
+                  <div class="callout tip"><div class="callout-title">Pattern to copy</div><div class="callout-body">Use <code class="fileref" data-path="backend/src/simulation/transforms/dynamical_system.py">dynamical_system.py</code> as the template for a non-fittable family (categorical mode + continuous knobs) and <code class="fileref" data-path="backend/src/simulation/transforms/fourier_series.py">fourier_series.py</code> for a fittable affine family.</div></div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Add a new dataset / experiment API endpoint</summary>
+                <div class="sub-body">
+                  <ol class="steps">
+                    <li>Add the handler to the matching router under <code class="fileref dir" data-path="backend/src/api/routers/">backend/src/api/routers/</code> (or a new router + include it in <code class="fileref" data-path="backend/src/api/main.py">main.py</code>).</li>
+                    <li>Inject dependencies via <code class="fileref" data-path="backend/src/api/dependencies.py">dependencies.py</code> (session, settings, preprocessor, extractor, tracker) — never construct engines inline.</li>
+                    <li>Validate at the boundary (letter/accent/variant membership, MIME, size, path-traversal); trust types internally.</li>
+                    <li>Convert ORM → Pydantic with <code>Model.model_validate(row)</code> for responses.</li>
+                    <li>Add real-Postgres integration tests in <code class="fileref dir" data-path="backend/tests/api/routers/">backend/tests/api/routers/</code>.</li>
+                  </ol>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Change a data contract (the careful path)</summary>
+                <div class="sub-body">
+                  <ol class="steps">
+                    <li>Flag the change to the maintainer first — it's a (major) semver bump.</li>
+                    <li>Update master plan §3, then the Pydantic model, then the ORM row, then a new Alembic migration under <code class="fileref dir" data-path="backend/migrations/versions/">backend/migrations/versions/</code>.</li>
+                    <li>Mirror the field in <code class="fileref" data-path="frontend/src/types/apiModels.ts">apiModels.ts</code>.</li>
+                    <li>Update the contract-check skills and tests. The <code>contract-check</code> / <code>data-driven-check</code> skills enforce alignment.</li>
+                  </ol>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Edit the live UI behavior</summary>
+                <div class="sub-body">
+                  <p>The live workspace is mostly in <code class="fileref" data-path="frontend/src/App.tsx">App.tsx</code> (connection/mic lifecycle), the R3F overlay in <code class="fileref" data-path="frontend/src/components/LiveCanvas.tsx">LiveCanvas.tsx</code>, and the dashboard in <code class="fileref" data-path="frontend/src/components/ScoreChart.tsx">ScoreChart.tsx</code>. Wire-format changes go in <code class="fileref" data-path="frontend/src/utils/liveMessages.ts">liveMessages.ts</code> (frontend) <em>and</em> <code class="fileref" data-path="backend/src/api/routers/live.py">live.py</code> (backend) — they must stay in lockstep. Keep charts behind their components (a Chart.js → WebGL swap should touch only the chart files). Vitest does not auto-cleanup; <code class="fileref" data-path="frontend/src/tests/setup.ts">tests/setup.ts</code> handles it.</p>
+                </div>
+              </details>
+
+              <div class="callout danger"><div class="callout-title">Hands off git</div><div class="callout-body">The maintainer manages all git state. Agents never run <code>git add/commit/push/checkout/...</code> — only read-only git. When work is done, report changed files + a suggested commit message; do not commit.</div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="testing">
+          <details>
+            <summary><span class="sec-num">13</span><h2>Testing</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">100% line coverage is a hard CI gate (<code>--cov-fail-under=100</code>). Tests mirror <code>src/</code>; the database and core math are never mocked.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Area</th><th>Tooling</th><th>Rule</th></tr></thead>
+                <tbody>
+                  <tr><td>Backend</td><td>pytest + pytest-asyncio (<code>asyncio_mode=auto</code>) + pytest-cov</td><td>Real Postgres via testcontainers; <code>assert_allclose</code> for floats, never <code>==</code>.</td></tr>
+                  <tr><td>Transform families</td><td>pytest reference-value tests</td><td>At least one closed-form case per family (e.g. pure tone into Lissajous → known ellipse).</td></tr>
+                  <tr><td>Frontend utils/components</td><td>Vitest + React Testing Library</td><td>100% on <code>src/utils/</code> + components; <code>setup.ts</code> cleanup mandatory.</td></tr>
+                  <tr><td>Browser</td><td>Playwright (desktop + mobile Chromium)</td><td>Real R3F canvas pixel check + visible <code>10.0 Hz</code> rate assertion.</td></tr>
+                </tbody>
+              </table></div>
+
+              <div class="callout note"><div class="callout-title">Coverage carve-outs</div><div class="callout-body">The Numba-compiled RK4 body in <code class="fileref" data-path="backend/src/simulation/transforms/dynamical_system.py">dynamical_system.py</code> is <code># pragma: no cover</code> because coverage can't trace compiled functions — it's exercised by behavioral + closed-form tests instead. The committed <code class="fileref" data-path="backend/tests/fixtures/test-sample.m4a">test-sample.m4a</code> fixture is a conditional codec smoke test (skipped when no local ffmpeg/audioread); the main upload harness is host-ffmpeg-independent.</div></div>
+              <div class="callout warn"><div class="callout-title">Coverage tracing across async greenlets</div><div class="callout-body">SQLAlchemy async runs DB calls via <code>greenlet_spawn</code>; without <code>concurrency = ["thread", "greenlet"]</code> in <code class="fileref" data-path="backend/pyproject.toml">pyproject.toml</code>, post-await lines in async endpoints show as uncovered.</div></div>
+              <div class="filelist"><div class="filecard"><code class="fileref dir" data-path="backend/tests/">backend/tests/</code><span class="filecard-desc">Mirrors src/; conftest provides the real-Postgres fixture.</span></div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="build-ci">
+          <details>
+            <summary><span class="sec-num">14</span><h2>Build, CI &amp; deployment</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">GitHub Actions (not GitLab for this repo). <code class="fileref" data-path=".github/workflows/ci.yml">ci.yml</code> on push/PR to main/staging/dev; <code class="fileref" data-path=".github/workflows/release.yml">release.yml</code> is a manual dispatch.</p>
+
+              <figure class="diagram">
+                <div class="mermaid">
+graph LR
+    lint["lint<br/>ruff check + format"] --> test["test<br/>pytest + 100% gate<br/>real Postgres"]
+    test --> build["build<br/>uv build sdist+wheel"]
+    lint --> frontend["frontend<br/>lint test browser-smoke build"]
+    build --> docker["docker-build<br/>backend + frontend images"]
+    frontend --> docker
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>graph LR
+    lint --> test["pytest 100% gate, real Postgres"]
+    test --> build["uv build"]
+    lint --> frontend["lint/test/browser/build"]
+    build --> docker["docker-build backend+frontend"]
+    frontend --> docker</code></pre></figure></div>
+                <figcaption>The pipeline. <code>docker-build</code> runs on PRs + main/staging to catch Dockerfile drift.</figcaption>
+              </figure>
+
+              <h3 class="anchor">Docker images</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="backend/Dockerfile">backend/Dockerfile</code><span class="filecard-desc">python:3.11-slim + uv; bakes libsndfile1/libgl1/libglib2.0-0/ffmpeg; CPU-only torch; entrypoint runs alembic upgrade then uvicorn. ~695 MB.</span></div>
+                <div class="filecard"><code class="fileref" data-path="frontend/Dockerfile">frontend/Dockerfile</code><span class="filecard-desc">Multi-stage: node:22-alpine build → nginx:1.27-alpine serve; VITE_* baked as build args.</span></div>
+                <div class="filecard"><code class="fileref" data-path="frontend/nginx.conf">frontend/nginx.conf</code><span class="filecard-desc">Static serve config; healthcheck probes 127.0.0.1.</span></div>
+              </div>
+              <div class="callout note"><div class="callout-title">CPU-only torch pin</div><div class="callout-body"><code>[tool.uv.sources]</code> routes <code>torch</code>/<code>torchaudio</code> to the PyTorch CPU wheel index with <code>index-strategy = "unsafe-best-match"</code>; the Dockerfile adds the matching <code>--extra-index-url</code>. This avoids the multi-GB CUDA build the default index would pull.</div></div>
+              <div class="callout warn"><div class="callout-title">Versioning is the pipeline's job</div><div class="callout-body">Never edit <code>pyproject.toml</code>'s <code>version</code> field directly — <code>release.yml</code> bumps it via <code>uv version --bump</code>. Docs only record the computed next version in <code class="fileref" data-path="docs/versions.md">versions.md</code>. The push-to-main release model under branch protection is still a maintainer decision.</div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="roadmap">
+          <details>
+            <summary><span class="sec-num">15</span><h2>Roadmap &amp; phases</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Five additive phases — each adds, never rewrites. Buildable code for all five has landed; the remaining work is empirical (real recordings + calibration + manual testing). Full breakdowns in <code class="fileref dir" data-path="docs/phases/">docs/phases/</code>.</p>
+
+              <figure class="diagram">
+                <div class="mermaid">
+gantt
+    title audio-glyph-inference phase roadmap
+    dateFormat YYYY-MM-DD
+    section Phase 1
+    Data pipeline            :done, p1, 2026-04-11, 35d
+    section Phase 2
+    Baseline search          :active, p2, after p1, 45d
+    section Phase 3
+    Expanded search          :active, p3, after p2, 60d
+    section Phase 4
+    Live UI                  :active, p4, after p3, 45d
+    section Phase 5
+    Writeup + negatives      :p5, after p4, 30d
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>gantt
+    title phase roadmap
+    dateFormat YYYY-MM-DD
+    section Phase 1
+    Data pipeline :done, p1, 2026-04-11, 35d
+    section Phase 2
+    Baseline search :active, p2, after p1, 45d
+    section Phase 3
+    Expanded search :active, p3, after p2, 60d
+    section Phase 4
+    Live UI :active, p4, after p3, 45d
+    section Phase 5
+    Writeup :p5, after p4, 30d</code></pre></figure></div>
+                <figcaption>Code is ahead of the empirical gates: P2–P4 buildable work proceeded while waiting on Stage-7 recordings.</figcaption>
+              </figure>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Phase</th><th>Delivers</th><th>Exit gate</th></tr></thead>
+                <tbody>
+                  <tr><td>1</td><td>Audio + glyph ingestion → queryable paired-example store + minimal API.</td><td>Pipeline runs end-to-end on real data (700 <code>.m4a</code> + 27 glyph targets).</td></tr>
+                  <tr><td>2</td><td>SearchEngine (grid + CMA-ES) over 3 baseline families; metrics; tracker; inference.</td><td>≥1 candidate beats a baseline threshold on ≥50% of letters across ≥2 held-out accents.</td></tr>
+                  <tr><td>3</td><td>Dynamical-system family; Bayesian + symbolic strategies; LOAO harness; negative-results scaffold.</td><td>A generalizing shared candidate beats Phase-2 baseline, OR a documented negative result.</td></tr>
+                  <tr><td>4</td><td>React/R3F live UI + MessagePack <code>/ws/live</code>.</td><td>User exercises every glyph form in-browser, geometry + score update ≥ 10 Hz.</td></tr>
+                  <tr><td>5</td><td>Paper-grade analysis, per-family leaderboards, cross-accent tables, reproducible manifest.</td><td>Writeup with real results (positive or negative).</td></tr>
+                </tbody>
+              </table></div>
+              <div class="callout note"><div class="callout-title">Stage 7 is the pivotal gate</div><div class="callout-body">The one remaining Phase-1 item — <strong>record + upload 700 real <code>.m4a</code></strong> (5 accents × 28 audio forms × 5 reps) — unblocks calibration and every downstream exit gate. The code path and tests are complete; it now needs real recordings flowing through <code>POST /api/datasets/audio</code>. That's also when the real <code>0.1.0</code> is earned. Maintainer-owned items: the version reset, the optional schema additions, the release model, and the browser live-loop pass.</div></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="glossary">
+          <details>
+            <summary><span class="sec-num">16</span><h2>Domain glossary</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Terms a newcomer needs to read the code and docs.</p>
+              <dl class="doc-dl">
+                <dt>F_θ</dt><dd>The unknown transformation — an explicit operator mapping audio waveform <code>x(t)</code> to a 2D glyph contour <code>G</code>, parameterized by <code>θ</code>. The whole project is about recovering it.</dd>
+                <dt>θ (theta)</dt><dd>The fitted parameter vector. Two tiers: <em>searched</em> (declared in <code>parameter_space()</code>) and <em>fitted</em> (closed-form affine vectors).</dd>
+                <dt>Transform family</dt><dd>A parameterized class of operators (Fourier, Lissajous, phase-space, dynamical, symbolic) implementing the <code>TransformFamily</code> protocol.</dd>
+                <dt>Glyph form</dt><dd>A written Hebrew letter shape: 22 regular + 5 sofit (final) forms ך ם ן ף ץ = 27. Sofit forms are glyph targets only, not separate audio labels.</dd>
+                <dt>Audio form</dt><dd>A spoken (letter, pronunciation_variant) pair: 28 total — begadkefat letters get hard/soft, the rest plain.</dd>
+                <dt>Accent</dt><dd>A Hebrew pronunciation tradition: ashkenazi / sephardi / moroccan / yemenite / chabad. The primary generalization axis.</dd>
+                <dt>Leave-one-accent-out (LOAO)</dt><dd>The headline test: fit on 4 accents, hold out the 5th, repeat for all 5. A candidate that only works on its training accent is an overfit, not a discovery.</dd>
+                <dt>Procrustes distance</dt><dd>Shape distance after optimal similarity alignment (reflection disabled — letters are chiral). The default fitness.</dd>
+                <dt>Lookup ratio</dt><dd>Var_within / Var_between of generated contours; the anti-lookup diagnostic. Small ⇒ degenerate per-letter constant (a lookup).</dd>
+                <dt>Feasibility probe</dt><dd>A cheap closed-form gate (FEASIBLE / TRIVIAL_LOOKUP / NO_FIT) run before spending full search compute.</dd>
+                <dt>STAM</dt><dd>The canonical Torah-scribal Hebrew script style. Targets render from <code>StamAshkenazCLM.ttf</code> (Culmus, GPL v2).</dd>
+                <dt>Complexity / MDL</dt><dd>The regularizer term <code>λ·Complexity(F_θ)</code> — an MDL-style parameter cost favouring simpler operators.</dd>
+                <dt>Stage 7</dt><dd>The data-collection step: 700 real <code>.m4a</code> recordings that unblock every empirical gate.</dd>
+              </dl>
+            </div>
+          </details>
+        </section>
+
+        <section class="doc-section" id="file-index">
+          <details>
+            <summary><span class="sec-num">17</span><h2>Key files index</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">A single jump-off map of the most load-bearing files.</p>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>File</th><th>What it's for</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="fileref" data-path="docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md">docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md</code></td><td>Authoritative goals, data contracts, transform zoo, phase gates.</td></tr>
+                  <tr><td><code class="fileref" data-path="docs/status.md">docs/status.md</code></td><td>Live per-phase state — the real source of "what works now."</td></tr>
+                  <tr><td><code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code></td><td>Operational rules, contracts, phase constraints (mirrored by AGENTS.md).</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/constants.py">backend/src/constants.py</code></td><td>Hebrew letters, glyph/audio forms, accents, math constants — the only domain literals.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/config.py">backend/src/config.py</code></td><td>BackendSettings — every tunable.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/api/main.py">backend/src/api/main.py</code></td><td>FastAPI app factory; wires all routers.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/api/routers/datasets.py">backend/src/api/routers/datasets.py</code></td><td>The Phase-1 ingestion + listing endpoints.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/api/routers/experiments.py">backend/src/api/routers/experiments.py</code></td><td>Runs the search synchronously; persists run + candidates + ledger.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/api/routers/live.py">backend/src/api/routers/live.py</code></td><td>The MessagePack live WebSocket protocol.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/simulation/search_engine.py">backend/src/simulation/search_engine.py</code></td><td>The optimizer: θ* = argmin mean d + λ·Complexity.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/simulation/shape_distance.py">backend/src/simulation/shape_distance.py</code></td><td>Procrustes / Chamfer / Fréchet metrics.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/simulation/audio_preprocessor.py">backend/src/simulation/audio_preprocessor.py</code></td><td>The audio preprocessing pipeline.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/simulation/glyph_extractor.py">backend/src/simulation/glyph_extractor.py</code></td><td>Font glyph → ordered unit-square contours.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/simulation/transforms/transform_base.py">backend/src/simulation/transforms/transform_base.py</code></td><td>The sacred TransformFamily protocol.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/src/simulation/feasibility_probe.py">backend/src/simulation/feasibility_probe.py</code></td><td>The anti-lookup feasibility verdict.</td></tr>
+                  <tr><td><code class="fileref" data-path="frontend/src/App.tsx">frontend/src/App.tsx</code></td><td>The live pronunciation workspace.</td></tr>
+                  <tr><td><code class="fileref" data-path="docker-compose.yml">docker-compose.yml</code></td><td>The 4-service stack.</td></tr>
+                  <tr><td><code class="fileref" data-path="backend/Dockerfile">backend/Dockerfile</code></td><td>The backend image (slim + uv + scientific deps).</td></tr>
+                  <tr><td><code class="fileref" data-path="run_audio_glyph_inference.sh">run_audio_glyph_inference.sh</code></td><td>The launcher with the [k]/[q]/[v]/[r] loop.</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </details>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <button id="backTop" title="Back to top"><span class="ico"></span></button>
+
+  <footer class="doc-footer">
+    <p>Human-facing documentation for <strong>audio-glyph-inference</strong> · generated 2026-06-07.
+    Styling and behavior are inlined directly into this file — it is fully self-contained and needs no external assets. Re-open after editing source to keep this guide in sync.</p>
+  </footer>
+
+  <script>
+/* ============================================================================
+   doc.js — Shared behavior for every project's PROJECT_DOCUMENTATION.html.
+   Inlined directly into this PROJECT_DOCUMENTATION.html (self-contained; no external script).
+   Responsibilities:
+     - theme (light/dark) with persistence
+     - auto-built table of contents from <section class="doc-section"> + h3 anchors
+     - scroll-spy active highlighting
+     - live full-text section filter (search box)
+     - expand-all / collapse-all
+     - click-to-copy file references and code blocks
+     - scroll progress bar + back-to-top
+     - mermaid diagram rendering (CDN) with graceful source fallback
+     - print = expand everything
+   No build step, no framework. Pure DOM.
+   ============================================================================ */
+(function () {
+  "use strict";
+
+  var THEME_KEY = "projDocTheme";
+
+  /* ---- theme (apply ASAP to avoid flash) ---- */
+  function preferredTheme() {
+    var saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    var btn = document.getElementById("themeToggle");
+    if (btn) {
+      var ico = btn.querySelector(".ico");
+      if (ico) ico.style.webkitMaskImage = ico.style.maskImage = "var(--icon-" + (t === "dark" ? "sun" : "moon") + ")";
+      btn.setAttribute("aria-label", t === "dark" ? "Switch to light theme" : "Switch to dark theme");
+    }
+  }
+  applyTheme(preferredTheme());
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  function init() {
+    applyTheme(preferredTheme());
+    buildTOC();
+    wireControls();
+    wireFileRefs();
+    wireCodeCopy();
+    wireScrollProgress();
+    wireBackToTop();
+    wireScrollSpy();
+    wirePrint();
+    initMermaid();
+    handleInitialHash();
+  }
+
+  /* ---- slugify ---- */
+  function slug(s) {
+    return s.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").slice(0, 60);
+  }
+
+  /* ---- TOC ---- */
+  function buildTOC() {
+    var toc = document.getElementById("docToc");
+    if (!toc) return;
+    var sections = Array.prototype.slice.call(document.querySelectorAll("main .doc-section"));
+    if (!sections.length) return;
+    var ul = document.createElement("ul");
+    var n = 0;
+    sections.forEach(function (sec) {
+      n++;
+      if (!sec.id) sec.id = "sec-" + n;
+      var h2 = sec.querySelector("summary h2");
+      var title = h2 ? h2.textContent.trim() : ("Section " + n);
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = "#" + sec.id;
+      a.dataset.target = sec.id;
+      a.innerHTML = '<span class="toc-num">' + n + "</span>" + escapeHTML(title);
+      li.appendChild(a);
+      ul.appendChild(li);
+
+      // nested h3 anchors marked with class "anchor"
+      var subs = sec.querySelectorAll("h3.anchor");
+      Array.prototype.forEach.call(subs, function (h3) {
+        if (!h3.id) h3.id = sec.id + "-" + slug(h3.textContent);
+        var sli = document.createElement("li");
+        var sa = document.createElement("a");
+        sa.href = "#" + h3.id;
+        sa.className = "sub";
+        sa.dataset.target = h3.id;
+        sa.textContent = h3.textContent.trim();
+        sli.appendChild(sa);
+        ul.appendChild(sli);
+      });
+    });
+    toc.appendChild(ul);
+
+    // smooth scroll with header offset, and open target section
+    toc.addEventListener("click", function (e) {
+      var a = e.target.closest("a");
+      if (!a) return;
+      e.preventDefault();
+      var id = a.dataset.target;
+      revealAndScroll(id);
+      history.replaceState(null, "", "#" + id);
+    });
+  }
+
+  function revealAndScroll(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    // open the enclosing section + any parent <details>
+    var d = el.closest("details");
+    while (d) { d.open = true; d = d.parentElement ? d.parentElement.closest("details") : null; }
+    var sec = el.closest(".doc-section") || el;
+    if (sec.querySelector) {
+      var det = sec.querySelector(":scope > details");
+      if (det) det.open = true;
+    }
+    setTimeout(function () {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 30);
+  }
+
+  /* ---- controls (expand/collapse/theme/print/search) ---- */
+  function wireControls() {
+    var expand = document.getElementById("expandAll");
+    var collapse = document.getElementById("collapseAll");
+    var theme = document.getElementById("themeToggle");
+    var print = document.getElementById("printBtn");
+    var search = document.getElementById("docSearch");
+
+    if (expand) expand.addEventListener("click", function () { allDetails().forEach(function (d) { d.open = true; }); });
+    if (collapse) collapse.addEventListener("click", function () {
+      document.querySelectorAll("main .doc-section > details").forEach(function (d) { d.open = false; });
+      document.querySelectorAll("main details.sub").forEach(function (d) { d.open = false; });
+    });
+    if (theme) theme.addEventListener("click", function () {
+      var cur = document.documentElement.getAttribute("data-theme");
+      var next = cur === "dark" ? "light" : "dark";
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+      applyTheme(next);
+    });
+    if (print) print.addEventListener("click", function () { window.print(); });
+    if (search) wireSearch(search);
+  }
+
+  function allDetails() { return Array.prototype.slice.call(document.querySelectorAll("main details")); }
+
+  /* ---- search / filter ---- */
+  function wireSearch(input) {
+    var countEl = document.querySelector(".search-count");
+    var sections = Array.prototype.slice.call(document.querySelectorAll("main .doc-section"));
+    var tocLinks = Array.prototype.slice.call(document.querySelectorAll("#docToc a"));
+    var debounce;
+    input.addEventListener("input", function () {
+      clearTimeout(debounce);
+      debounce = setTimeout(run, 120);
+    });
+    input.addEventListener("keydown", function (e) { if (e.key === "Escape") { input.value = ""; run(); input.blur(); } });
+
+    function run() {
+      var q = input.value.trim().toLowerCase();
+      var shown = 0;
+      if (!q) {
+        sections.forEach(function (s) { s.classList.remove("filtered-out"); });
+        tocLinks.forEach(function (a) { a.classList.remove("filtered-out"); });
+        if (countEl) countEl.textContent = "";
+        return;
+      }
+      sections.forEach(function (s) {
+        var match = s.textContent.toLowerCase().indexOf(q) !== -1;
+        s.classList.toggle("filtered-out", !match);
+        if (match) {
+          shown++;
+          var det = s.querySelector(":scope > details");
+          if (det) det.open = true;
+        }
+        var link = document.querySelector('#docToc a[data-target="' + s.id + '"]');
+        if (link) link.classList.toggle("filtered-out", !match);
+      });
+      if (countEl) countEl.textContent = shown + (shown === 1 ? " match" : " matches");
+    }
+  }
+
+  /* ---- file references: click to copy path ---- */
+  function wireFileRefs() {
+    document.body.addEventListener("click", function (e) {
+      var ref = e.target.closest("code.fileref");
+      if (!ref) return;
+      var path = ref.getAttribute("data-path") || ref.textContent.trim();
+      copyText(path).then(function () {
+        var old = ref.textContent;
+        ref.classList.add("copied");
+        ref.textContent = "copied: " + path;
+        setTimeout(function () { ref.textContent = old; ref.classList.remove("copied"); }, 1100);
+      });
+    });
+  }
+
+  /* ---- code blocks: copy button ---- */
+  function wireCodeCopy() {
+    document.querySelectorAll("figure.code").forEach(function (fig) {
+      var pre = fig.querySelector("pre");
+      if (!pre) return;
+      var btn = document.createElement("button");
+      btn.className = "btn code-copy";
+      btn.innerHTML = '<span class="ico" style="-webkit-mask:var(--icon-copy) center/contain no-repeat;mask:var(--icon-copy) center/contain no-repeat"></span><span class="label">Copy</span>';
+      btn.addEventListener("click", function () {
+        copyText(pre.innerText).then(function () {
+          var l = btn.querySelector(".label");
+          if (l) { l.textContent = "Copied"; setTimeout(function () { l.textContent = "Copy"; }, 1100); }
+        });
+      });
+      fig.appendChild(btn);
+    });
+  }
+
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).catch(fallback);
+    return fallback();
+    function fallback() {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch (e) {}
+      return Promise.resolve();
+    }
+  }
+
+  /* ---- scroll progress ---- */
+  function wireScrollProgress() {
+    var bar = document.getElementById("scrollProgress");
+    if (!bar) return;
+    function upd() {
+      var h = document.documentElement;
+      var max = h.scrollHeight - h.clientHeight;
+      var pct = max > 0 ? (h.scrollTop / max) * 100 : 0;
+      bar.style.width = pct + "%";
+    }
+    window.addEventListener("scroll", upd, { passive: true });
+    window.addEventListener("resize", upd);
+    upd();
+  }
+
+  /* ---- back to top ---- */
+  function wireBackToTop() {
+    var b = document.getElementById("backTop");
+    if (!b) return;
+    b.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
+    window.addEventListener("scroll", function () {
+      b.classList.toggle("show", window.scrollY > 600);
+    }, { passive: true });
+  }
+
+  /* ---- scroll-spy ---- */
+  function wireScrollSpy() {
+    var links = {};
+    document.querySelectorAll("#docToc a").forEach(function (a) { links[a.dataset.target] = a; });
+    var targets = Array.prototype.slice.call(document.querySelectorAll("main .doc-section, main h3.anchor"));
+    if (!targets.length || !("IntersectionObserver" in window)) return;
+    var visible = new Set();
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id);
+      });
+      var best = null, bestTop = Infinity;
+      visible.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var top = el.getBoundingClientRect().top;
+        if (top < bestTop) { bestTop = top; best = id; }
+      });
+      Object.keys(links).forEach(function (id) { links[id].classList.toggle("active", id === best); });
+    }, { rootMargin: "-70px 0px -65% 0px", threshold: 0 });
+    targets.forEach(function (t) { if (t.id) obs.observe(t); });
+  }
+
+  /* ---- print = expand all ---- */
+  function wirePrint() {
+    window.addEventListener("beforeprint", function () { allDetails().forEach(function (d) { d.open = true; }); });
+  }
+
+  /* ---- initial hash ---- */
+  function handleInitialHash() {
+    if (location.hash.length > 1) {
+      var id = decodeURIComponent(location.hash.slice(1));
+      setTimeout(function () { revealAndScroll(id); }, 60);
+    }
+  }
+
+  /* ---- mermaid (CDN, graceful fallback to source) ---- */
+  function initMermaid() {
+    var blocks = document.querySelectorAll(".mermaid");
+    if (!blocks.length) return;
+    // stash source for fallback
+    blocks.forEach(function (b) { if (!b.dataset.src) b.dataset.src = b.textContent; });
+    var theme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "default";
+    var s = document.createElement("script");
+    s.type = "module";
+    s.textContent =
+      'import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";' +
+      'mermaid.initialize({ startOnLoad: false, theme: "' + theme + '", securityLevel: "loose", flowchart:{useMaxWidth:true}, themeVariables:{ fontFamily: "inherit" } });' +
+      'try { await mermaid.run({ querySelector: ".mermaid" }); }' +
+      'catch (e) { document.querySelectorAll(".mermaid").forEach(function(b){ var f=b.closest("figure.diagram"); if(f) f.classList.add("failed"); }); }';
+    s.onerror = mermaidFail;
+    document.body.appendChild(s);
+    // safety net: if CDN blocked, reveal fallbacks after a delay
+    setTimeout(function () {
+      document.querySelectorAll(".mermaid").forEach(function (b) {
+        if (!b.querySelector("svg")) { var f = b.closest("figure.diagram"); if (f) f.classList.add("failed"); }
+      });
+    }, 4000);
+  }
+  function mermaidFail() {
+    document.querySelectorAll("figure.diagram").forEach(function (f) { f.classList.add("failed"); });
+  }
+
+  function escapeHTML(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+})();
+
+  </script>
+</body>
+</html>

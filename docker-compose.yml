@@ -1,12 +1,10 @@
 # ============================================================
-# audio-glyph-inference — docker-compose (Phase 1)
+# audio-glyph-inference - docker-compose
 # ============================================================
-# Phase 1 services:
+# Services:
 #   - postgres      persistent store for paired examples + experiment runs
-#   - redis         cache / pubsub (reserved for Phase 4 live streaming)
+#   - redis         cache / pubsub
 #   - backend       FastAPI + numerics + torch (uvicorn)
-#
-# Phase 4 will add:
 #   - frontend      React 18 + TS strict + Vite + R3F (built by frontend/Dockerfile)
 #                   depends_on: { backend: { condition: service_healthy } }
 #
@@ -23,7 +21,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-agi_dev}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agi_dev_password}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5520}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -36,7 +34,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-6520}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -61,7 +59,7 @@ services:
       BACKEND_CONTOURS_DIR: /app/data/contours
       BACKEND_EXPERIMENTS_DIR: /app/experiments
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-8220}:8000"
     volumes:
       - ./backend/src:/app/src
       - ./backend/data:/app/data
@@ -77,6 +75,27 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8220}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8220/ws/live}
+        VITE_AUDIO_SAMPLE_RATE_HZ: ${VITE_AUDIO_SAMPLE_RATE_HZ:-16000}
+    ports:
+      - "${VITE_PORT:-5220}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
 
 volumes:

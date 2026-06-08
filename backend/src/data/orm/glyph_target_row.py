@@ -10,9 +10,15 @@ from src.data.orm.base import Base
 
 
 class GlyphTargetRow(Base):
-    """Storage row for rendered Hebrew letter glyph contours."""
+    """Storage row for rendered Hebrew letter glyph contours — mirrors models.GlyphTarget."""
 
     __tablename__ = "glyph_targets"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    # remaining columns implemented in Phase 1
+    letter: Mapped[str]
+    glyph_form: Mapped[str]
+    font_name: Mapped[str]
+    raster_size_px: Mapped[int]
+    contour_path: Mapped[str]
+    num_points: Mapped[int]
+    num_contours: Mapped[int]

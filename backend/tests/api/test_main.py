@@ -1,21 +1,20 @@
-"""Tests for src/api/main.py.
-
-Phase 1 scaffold: create_app raises NotImplementedError. When the body
-lands the scaffold assertion is replaced by a real FastAPI smoke test
-(see docs/phases/phase-1-plan.md).
-"""
+"""Tests for src/api/main.py."""
 
 from __future__ import annotations
 
-import pytest
-from src.api import main
+from fastapi import FastAPI
+from src.api.main import app, create_app
 
 
-def test_create_app_is_scaffold_stub() -> None:
-    with pytest.raises(NotImplementedError):
-        main.create_app()
+def test_module_app_is_fastapi() -> None:
+    assert isinstance(app, FastAPI)
 
 
-def test_app_attribute_is_declared() -> None:
-    # Module-level `app: FastAPI` annotation must be present for Phase 1 scaffold.
-    assert "app" in main.__annotations__
+def test_create_app_builds_fastapi_without_overrides() -> None:
+    assert isinstance(create_app(), FastAPI)
+
+
+async def test_lifespan_disposes_engine() -> None:
+    built = create_app()
+    async with built.router.lifespan_context(built):
+        pass

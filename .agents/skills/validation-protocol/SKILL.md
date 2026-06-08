@@ -13,7 +13,7 @@ Tests for this project are not style-box checks — they are what separates infe
 2. **Use `np.testing.assert_allclose(..., atol=..., rtol=...)` for float comparisons.** Never `==`. Document the tolerance in a comment if non-obvious.
 3. **Every transform family has at least one reference-value test.** For example: a pure-tone sine at frequency f fed through the Lissajous family should produce an ellipse with known axis ratio — assert that. A randomly-generated audio signal matching the engine's own output is not a test; it's a tautology.
 4. **Parametrize per letter with `@pytest.mark.parametrize`.** Every letter in `constants.HEBREW_LETTERS` should exercise the end-to-end pipeline at least once.
-5. **Split and speaker tests.** At least one test must validate a candidate transform on a held-out speaker (cross-speaker generalization). A transform that only works on the speakers it was fitted to is not a discovery — it is an overfit.
+5. **Split and accent tests.** At least one test must validate a candidate transform on a held-out accent (leave-one-accent-out generalization). A transform that only works on the accents it was fitted to is not a discovery — it is an overfit.
 6. **Coverage gate: 100%.** See `backend/pyproject.toml`'s `--cov-fail-under=100`. If coverage drops below, fix by adding tests, not by lowering the threshold.
 
 ## When reviewing a test

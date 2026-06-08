@@ -1,0 +1,48 @@
+{
+  "name": "phase5_pending_real_data",
+  "status": "pending_real_recordings",
+  "purpose": "Reproduce the Phase-5 writeup tables and figures once Stage-7 recordings and experiment ledgers exist.",
+  "runs_dir": "backend/experiments",
+  "report_command": "cd backend && uv run python scripts/render_phase5_report.py --manifest experiments/manifests/phase5_pending_real_data.json --repo-root .. --output ../docs/negative-results.md",
+  "conclusion": "pending",
+  "data_requirements": {
+    "audio_source": "user_m4a_uploads",
+    "speaker_count": 1,
+    "accents": ["ashkenazi", "sephardi", "moroccan", "yemenite", "chabad"],
+    "base_letters": "backend/src/constants.py::HEBREW_LETTERS",
+    "audio_forms": "backend/src/constants.py::AUDIO_FORM_KEYS",
+    "glyph_forms": ["א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ", "ק", "ר", "ש", "ת", "ך", "ם", "ן", "ף", "ץ"],
+    "repetitions_per_accent_letter": 5,
+    "total_expected_audio_samples": 700,
+    "target_font": "backend/data/fonts/StamAshkenazCLM.ttf"
+  },
+  "pipeline": [
+    "POST /api/datasets/audio for each raw .m4a recording",
+    "POST /api/datasets/glyphs for each Hebrew glyph form",
+    "POST /api/datasets/pairs to bind audio samples to glyph targets",
+    "Run scripts/audit_stage7_dataset.py to verify the constants-backed Stage-7 dataset is complete",
+    "POST /api/experiments for each shared-across-letters family/search run",
+    "Replay backend/experiments/*.jsonl with src.simulation.leaderboard.build_family_leaderboards",
+    "Run src.simulation.leave_one_accent_out.evaluate_leave_one_accent_out on accent-disjoint folds",
+    "Render negative-results transcript with src.simulation.negative_results.render_negative_results_report"
+  ],
+  "families": [
+    "fourier_series",
+    "lissajous",
+    "phase_space_embedding",
+    "dynamical_system",
+    "symbolic_regression"
+  ],
+  "strategies": ["grid", "cma-es", "bayesian", "symbolic-regression"],
+  "distance_metrics": ["procrustes", "chamfer", "frechet"],
+  "excluded_run_names": ["live-smoke-seed"],
+  "live_loop_evidence": null,
+  "headline_candidate_rule": "Only shared_across_letters=true candidates are eligible for headline leaderboards and exit gates.",
+  "pending_external_inputs": [
+    "Stage-7 real recordings",
+    "Calibrated rho_min for feasibility-probe verdict",
+    "Browser live-loop user testing for all Hebrew glyph forms"
+  ],
+  "writeup": "docs/writeup.md",
+  "notebook": "notebooks/phase5_reproducibility.ipynb"
+}

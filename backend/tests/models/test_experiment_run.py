@@ -18,15 +18,23 @@ def _valid_payload() -> dict:
         "search_strategy": "cma-es",
         "dataset_split": "train",
         "scoring_metric": "procrustes",
+        "regularization_weight": 0.01,
+        "held_out_accent": "yemenite",
+        "rng_seed": 1234,
+        "font_name": "StamAshkenazCLM.ttf",
+        "config_snapshot": {"audio_sample_rate_hz": 16_000, "glyph_contour_num_points": 256},
         "max_evaluations": 1000,
         "started_at": datetime(2026, 4, 16, tzinfo=UTC),
     }
 
 
 def test_round_trip_with_optional_fields_none() -> None:
-    run = ExperimentRun(**_valid_payload())
+    payload = _valid_payload()
+    payload["held_out_accent"] = None
+    run = ExperimentRun(**payload)
     assert run.completed_at is None
     assert run.best_candidate_id is None
+    assert run.held_out_accent is None
     rehydrated = ExperimentRun(**run.model_dump())
     assert rehydrated == run
 
@@ -43,5 +51,26 @@ def test_round_trip_with_optional_fields_populated() -> None:
 def test_missing_required_field_raises() -> None:
     payload = _valid_payload()
     del payload["search_strategy"]
+    with pytest.raises(ValidationError):
+        ExperimentRun(**payload)
+
+
+def test_invalid_search_strategy_rejected() -> None:
+    payload = _valid_payload()
+    payload["search_strategy"] = "genetic"
+    with pytest.raises(ValidationError):
+        ExperimentRun(**payload)
+
+
+def test_invalid_scoring_metric_rejected() -> None:
+    payload = _valid_payload()
+    payload["scoring_metric"] = "euclidean"
+    with pytest.raises(ValidationError):
+        ExperimentRun(**payload)
+
+
+def test_invalid_held_out_accent_rejected() -> None:
+    payload = _valid_payload()
+    payload["held_out_accent"] = "martian"
     with pytest.raises(ValidationError):
         ExperimentRun(**payload)

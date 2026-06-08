@@ -30,6 +30,7 @@ dependencies = [
     "scipy>=1.12.0",
     "pandas>=2.2.0",
     "numba>=0.59.0",
+    "cma>=3.3.0",
 
     # --- Audio processing ---
     "librosa>=0.10.1",
@@ -62,7 +63,7 @@ dependencies = [
     # --- Binary serialization for WebSocket payloads ---
     "msgpack>=1.0.7",
 
-    # --- HTTP client for data source ingestion ---
+    # --- HTTP client (httpx.AsyncClient for FastAPI integration tests) ---
     "httpx>=0.27.0",
 ]
 
@@ -81,7 +82,25 @@ dev = [
     "pytest-mock>=3.12.0",
     "ruff>=0.3.0",
     "httpx>=0.27.0",
+    "testcontainers[postgres]>=4.0.0",
 ]
+
+# Pull torch/torchaudio from the CPU wheel index — the default index ships
+# multi-GB CUDA builds this CPU-only project does not use. See docs/dependencies.md.
+# index-strategy: consider versions across BOTH PyPI and the PyTorch index (both
+# trusted) so common deps the PyTorch index also mirrors (e.g. certifi) don't
+# shadow the newer PyPI versions during `uv pip compile`'s first-index-wins resolve.
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
 
 [build-system]
 requires = ["hatchling"]
@@ -100,13 +119,10 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "ANN"]
-ignore = [
-    "ANN101",  # missing type annotation for self
-    "ANN102",  # missing type annotation for cls
-]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN"]  # test fixtures don't need full annotations
+"migrations/**" = ["E402"]  # alembic env.py imports after a sys.path bootstrap
 
 # ============================================================
 # Pytest
@@ -131,6 +147,10 @@ addopts = [
 [tool.coverage.run]
 source = ["src"]
 branch = true
+# SQLAlchemy's async layer runs DB calls via greenlet_spawn; without this the
+# coverage tracer is lost across the greenlet switch and post-await lines in
+# async endpoints show as uncovered. See docs/dependencies.md.
+concurrency = ["thread", "greenlet"]
 
 [tool.coverage.report]
 exclude_lines = [

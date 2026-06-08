@@ -33,7 +33,7 @@ Re-read `AGENTS.md` and `docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md` §4 (transfo
 
 ### 5. Reference validation
 - Against at least one closed-form target case (e.g., a pure-tone sine input should produce a Lissajous with known ellipse), the implementation matches within documented tolerance.
-- Cross-speaker generalization: at least one test runs on a held-out speaker and reports a numeric distance.
+- Cross-accent generalization: at least one test runs on a held-out accent and reports a numeric distance.
 
 ## Report
 

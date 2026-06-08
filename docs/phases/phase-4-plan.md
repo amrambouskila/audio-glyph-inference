@@ -6,15 +6,17 @@
 
 ## In scope
 
-- Scaffold `frontend/` for the first time (React 18 + TS strict + Vite + Zustand + `@react-three/fiber` + `@react-three/drei` + Chart.js + `socket.io-client`)
-- `frontend/Dockerfile` (multi-stage Node → nginx) + `frontend/nginx.conf`
-- Update `docker-compose.yml` to add the `frontend` service with `depends_on: { backend: { condition: service_healthy } }`
-- Backend: `src/api/routers/live.py` implementing WebSocket `/ws/live` with MessagePack binary framing
-- Audio capture in browser (`getUserMedia`), streamed to backend at 16 kHz
-- Backend streams back generated geometry and per-frame shape-distance score
-- R3F scene: target glyph + generated contour overlaid, animated on each frame
-- Chart.js score dashboard (history, per-letter distribution)
-- Vitest + React Testing Library coverage of `src/utils/`
+- Scaffold `frontend/` for the first time (React 18 + TS strict + Vite + Zustand + `@react-three/fiber` + `@react-three/drei` + Chart.js + raw WebSocket + MessagePack) - implemented
+- `frontend/Dockerfile` (multi-stage Node -> nginx) + `frontend/nginx.conf` - implemented
+- Update `docker-compose.yml` to add the `frontend` service with `depends_on: { backend: { condition: service_healthy } }` - implemented
+- Backend: `src/api/routers/live.py` implementing WebSocket `/ws/live` with MessagePack binary framing - implemented
+- Audio capture in browser (`getUserMedia`), streamed to backend at the configured sample rate - implemented
+- Backend streams back generated geometry and per-frame shape-distance score - implemented
+- R3F scene: target glyph + generated contour overlaid, animated on each frame - implemented
+- Chart.js score dashboard (history plus latest distance by letter plus score update rate) - implemented with focused component coverage
+- Live UI catalog discovery for saved glyph targets and completed-run best candidates - implemented
+- Vitest coverage of `src/utils/` - implemented
+- CI frontend lint/unit-test/browser-smoke/build/docker-build wiring - implemented
 
 ## Explicitly deferred
 
@@ -23,6 +25,6 @@
 
 ## Exit gate
 
-- Full round-trip works for all 22 letters
+- Full round-trip works for all 27 glyph forms
 - Render rate ≥10 Hz end-to-end
-- CI green (frontend: lint, test, build, docker-build)
+- CI green (frontend: lint, unit test, browser smoke, build, docker-build)

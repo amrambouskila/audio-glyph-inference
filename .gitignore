@@ -13,6 +13,7 @@ Desktop.ini
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # Claude state (local hook state, caches, transcripts)
 .claude/
@@ -28,6 +29,7 @@ venv/
 .ruff_cache/
 .mypy_cache/
 .coverage
+coverage/
 coverage.xml
 htmlcov/
 
@@ -39,6 +41,8 @@ node_modules/
 dist/
 *.tsbuildinfo
 .vite/
+playwright-report/
+test-results/
 
 # Docker
 docker-compose.override.yml
@@ -57,10 +61,13 @@ backend/data/audio/**/*.m4a
 backend/data/audio/**/*.wav
 backend/data/contours/*.npy
 backend/data/contours/*.npz
+backend/data/contours/**/*.npy
+backend/data/contours/**/*.npz
 !backend/data/audio/.gitkeep
 !backend/data/contours/.gitkeep
 
 # Experiment artifacts
+backend/experiments/*.jsonl
 backend/experiments/runs/
 backend/experiments/checkpoints/
 *.mlflow/

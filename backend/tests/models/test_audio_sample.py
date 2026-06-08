@@ -16,8 +16,10 @@ def _valid_payload() -> dict:
         "letter": "א",
         "speaker_id": "speaker-1",
         "accent": "ashkenazi",
+        "repetition": 1,
+        "pronunciation_variant": "plain",
         "source": "user",
-        "file_path": "/app/data/audio/alef_001.m4a",
+        "file_path": "/app/data/audio/ashkenazi/א/2026-04-16-120000-rep1.m4a",
         "sample_rate_hz": 16_000,
         "duration_s": 1.5,
         "recorded_at": datetime(2026, 4, 16, 12, 0, 0, tzinfo=UTC),
@@ -50,3 +52,40 @@ def test_all_accent_strings_accepted() -> None:
         payload = _valid_payload()
         payload["accent"] = accent
         assert AudioSample(**payload).accent == accent
+
+
+def test_invalid_letter_rejected() -> None:
+    payload = _valid_payload()
+    payload["letter"] = "Q"
+    with pytest.raises(ValidationError):
+        AudioSample(**payload)
+
+
+def test_invalid_accent_rejected() -> None:
+    payload = _valid_payload()
+    payload["accent"] = "klingon"
+    with pytest.raises(ValidationError):
+        AudioSample(**payload)
+
+
+def test_non_positive_repetition_rejected() -> None:
+    payload = _valid_payload()
+    payload["repetition"] = 0
+    with pytest.raises(ValidationError):
+        AudioSample(**payload)
+
+
+def test_hard_soft_variants_accepted_for_begadkefat_letters() -> None:
+    for variant in ("hard", "soft"):
+        payload = _valid_payload()
+        payload["letter"] = "ב"
+        payload["pronunciation_variant"] = variant
+        assert AudioSample(**payload).pronunciation_variant == variant
+
+
+def test_hard_soft_variants_rejected_for_non_begadkefat_letters() -> None:
+    payload = _valid_payload()
+    payload["letter"] = "א"
+    payload["pronunciation_variant"] = "hard"
+    with pytest.raises(ValidationError):
+        AudioSample(**payload)

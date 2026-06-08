@@ -1,23 +1,27 @@
-"""Tests for src/data/database.py.
-
-Phase 1 is scaffold-only: both callables raise NotImplementedError.
-Real engine / session lifecycle tests land when Phase 1 implements the
-bodies (see docs/phases/phase-1-plan.md). Per CLAUDE.md §13 the gate is
-only real integration tests once the bodies exist — mocking the engine
-is forbidden.
-"""
+"""Tests for src/data/database.py — real Postgres via the conftest fixtures (no mocking)."""
 
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 from src.data.database import create_engine, session_scope
 
 
-def test_create_engine_is_scaffold_stub() -> None:
-    with pytest.raises(NotImplementedError):
-        create_engine("postgresql+asyncpg://user:pw@host:5432/db")
+def test_create_engine_returns_async_engine(postgres_url: str) -> None:
+    engine = create_engine(postgres_url)
+    assert isinstance(engine, AsyncEngine)
+    assert engine.url.drivername == "postgresql+asyncpg"
 
 
-async def test_session_scope_is_scaffold_stub() -> None:
-    with pytest.raises(NotImplementedError):
-        await session_scope(engine=None)  # type: ignore[arg-type]
+async def test_session_scope_commits_on_success(db_engine: AsyncEngine) -> None:
+    async with session_scope(db_engine) as session:
+        result = await session.execute(text("SELECT 1"))
+        assert result.scalar_one() == 1
+
+
+async def test_session_scope_rolls_back_on_error(db_engine: AsyncEngine) -> None:
+    with pytest.raises(ValueError, match="boom"):
+        async with session_scope(db_engine) as session:
+            await session.execute(text("SELECT 1"))
+            raise ValueError("boom")

@@ -15,7 +15,7 @@ Conventional ML treats the spoken-letter-to-written-letter pairing as a *classif
 
 The unknown object is the **algorithm itself**. The input distribution is given (recordings of Hebrew letters). The output distribution is given (glyph contours rendered from a STAM-style Torah font). The research question is:
 
-> What family of functions `F_θ: x(t) → G` minimizes the shape distance `d(F_θ(x_i), L_i)` across training pairs, under constraints of simplicity, interpretability, and generalization across speakers?
+> What family of functions `F_θ: x(t) → G` minimizes the shape distance `d(F_θ(x_i), L_i)` across training pairs, under constraints of simplicity, interpretability, and generalization across accents (a single speaker; see §11.3)?
 
 This is **system identification / operator inference** — not classification, not generative modeling, not supervised glyph regression.
 
@@ -29,7 +29,7 @@ $$
 
 Subject to:
 
-- **Generalization across speakers.** θ* must produce low d on held-out recordings by held-out speakers.
+- **Generalization across accents.** θ* must produce low d on recordings in a held-out accent (single speaker, leave-one-accent-out; see §11.3).
 - **Shared-across-letters preference.** A single θ* that works for all 22 letters beats 22 letter-specific θ*'s — we explicitly penalize per-letter tuning.
 - **Interpretability.** F must be an explicit mathematical operator — Fourier series, Lissajous curve, phase-space embedding, ODE solution, symbolic-regression expression — not a black-box neural net used directly.
 - **Simplicity.** Subject to accuracy, shorter descriptions (in the MDL sense) dominate longer ones.
@@ -38,44 +38,54 @@ Subject to:
 
 ## 3. Data Contracts (sacred — see project `CLAUDE.md` §3)
 
-### 3.1 Hebrew letter label space
+### 3.1 Hebrew letter, audio-form, and glyph-form spaces
 
-The 22 standard letters of the alef-bet, in canonical order:
+The 22 standard base letters of the alef-bet, in canonical order:
 
 ```
 א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת
 ```
 
-Sofit (final) forms share the phoneme of their base letter — they are visual variants handled at the glyph extraction layer, not the audio layer. Niqqud (vowel markings) are out of scope for Phases 1–5.
+These remain exposed as `constants.HEBREW_LETTERS` and are the base-letter axis used by search/evaluation.
+
+The written glyph-form space is `constants.GLYPH_FORMS`: the 22 regular forms plus the five sofit forms `ך ם ן ף ץ`. Sofit forms map back to their base letters through `constants.BASE_LETTER_BY_GLYPH_FORM`; they are glyph targets, not separate audio labels.
+
+The spoken audio-form space is `constants.AUDIO_FORM_KEYS`: every non-begadkefat base letter has `pronunciation_variant="plain"`, and the six traditional begadkefat letters `ב ג ד כ פ ת` have explicit `hard` and `soft` variants. Niqqud (vowel markings) are out of scope for Phases 1-5.
 
 ### 3.2 AudioSample
 
-One raw recording of a single letter being spoken.
+One raw recording of a single base-letter pronunciation variant being spoken.
 
 | Field              | Type     | Meaning                                                                       |
 |--------------------|----------|-------------------------------------------------------------------------------|
 | `id`               | UUID     | Primary key                                                                   |
-| `letter`           | str      | One of the 22 letters above                                                   |
+| `letter`           | str      | Base letter; one of `constants.HEBREW_LETTERS`                                |
 | `speaker_id`       | str      | Opaque speaker identifier. In Phase 1 all samples come from the project owner |
 | `accent`           | str      | One of `constants.ACCENTS`: `ashkenazi` / `sephardi` / `moroccan` / `yemenite` / `chabad` |
+| `repetition`       | int      | 1-based repetition index within a `(speaker_id, accent, letter, pronunciation_variant)` recording block |
+| `pronunciation_variant` | str | One of `plain` / `hard` / `soft`; constrained by `constants.PRONUNCIATION_VARIANTS_BY_BASE_LETTER` |
 | `source`           | str      | Origin tag; `'user'` is the Phase 1 default                                   |
 | `file_path`        | str      | Absolute path inside the container                                            |
 | `sample_rate_hz`   | int      | Native sample rate of the file                                                |
 | `duration_s`       | float    | Duration in seconds                                                           |
 | `recorded_at`      | datetime | Recording or ingestion timestamp                                              |
 
+**Uniqueness.** `(speaker_id, accent, letter, pronunciation_variant, repetition)` is unique — second-precision timestamps cannot disambiguate repetitions; the ORM row enforces it.
+
 ### 3.3 GlyphTarget
 
-The canonical 2D target shape for one letter, rendered from a STAM-style Torah font.
+The canonical 2D target shape for one written glyph form, rendered from a STAM-style Torah font.
 
 | Field             | Type  | Meaning                                                         |
 |-------------------|-------|-----------------------------------------------------------------|
 | `id`              | UUID  | Primary key                                                     |
-| `letter`          | str   | One of the 22 letters                                           |
+| `letter`          | str   | Base letter; one of `constants.HEBREW_LETTERS`                  |
+| `glyph_form`      | str   | Written form; one of `constants.GLYPH_FORMS`                    |
 | `font_name`       | str   | Font file name, tracked for reproducibility                     |
 | `raster_size_px`  | int   | Square raster used during rendering                             |
-| `contour_path`    | str   | Path to `.npy` file holding (N, 2) float64 contour              |
-| `num_points`      | int   | Number of resampled contour points                              |
+| `contour_path`    | str   | Path to `.npz` holding the ordered (n_i, 2) float64 stroke contours |
+| `num_points`      | int   | Total resampled contour points across all strokes              |
+| `num_contours`    | int   | Number of ordered stroke contours (1 for most; 2 for ה / ק)    |
 
 **Units:** contour coordinates are in the unit square `[-0.5, 0.5]` with origin at centroid. Never raw pixels.
 
@@ -88,8 +98,10 @@ Atomic training unit — one audio sample bound to one target glyph.
 | `id`               | UUID | Primary key                                  |
 | `audio_sample_id`  | UUID | FK → AudioSample                             |
 | `glyph_target_id`  | UUID | FK → GlyphTarget                             |
-| `letter`           | str  | Denormalized for query convenience           |
-| `split`            | str  | `train` / `val` / `test`, assigned per speaker |
+| `letter`           | str  | Denormalized base letter for query convenience |
+| `pronunciation_variant` | str | Denormalized audio pronunciation variant |
+| `glyph_form`       | str  | Denormalized written glyph form              |
+| `split`            | str  | `train` / `val` / `test`, assigned per accent (leave-one-accent-out; see §11.3) |
 
 ### 3.5 TransformCandidate
 
@@ -99,11 +111,13 @@ A frozen `F_θ` produced by a search run.
 |--------------------------|--------------------|-----------------------------------------------------------------|
 | `id`                     | UUID               | Primary key                                                     |
 | `family`                 | str                | Registered family name (`fourier_series`, `lissajous`, ...)     |
-| `theta`                  | dict[str, float]   | Fitted parameter vector                                         |
+| `theta`                  | dict[str, float\|int\|list[float]\|str] | Fitted parameter vector (ints for orders K, lists for coeff vectors, str for categorical tags) |
+| `expression`             | str \| None        | Closed-form expression for symbolic-regression candidates; None for parametric families |
 | `shared_across_letters`  | bool               | Whether θ is shared (True) or letter-specific (False)           |
 | `interpretability_score` | float              | [0,1] — penalizes parameter count and opacity                   |
 | `simplicity_score`       | float              | [0,1] — typically 1 / (1 + MDL)                                 |
 | `mean_shape_distance`    | float              | Average Procrustes / Fréchet distance on evaluation split       |
+| `lookup_ratio`           | float              | Anti-lookup diagnostic: within-letter / between-letter generated-contour variance |
 | `created_at`             | datetime           | Timestamp                                                       |
 
 ### 3.6 ExperimentRun
@@ -118,6 +132,11 @@ One configured search.
 | `search_strategy`  | str       | `grid` / `cma-es` / `bayesian` / `symbolic-regression`       |
 | `dataset_split`    | str       | e.g. `train`, `train+val`                                   |
 | `scoring_metric`   | str       | `procrustes` / `frechet` / `chamfer`                        |
+| `regularization_weight` | float | λ in the §2 objective: weight on Complexity(F_θ), ≥ 0       |
+| `held_out_accent`  | str \| None | Accent held out for leave-one-accent-out eval; null otherwise (§11.3) |
+| `rng_seed`         | int       | Search RNG seed; recorded for reproducibility (§10)         |
+| `font_name`        | str       | Glyph font used for the target contours; recorded for reproducibility |
+| `config_snapshot`  | dict      | Flattened BackendSettings for the run; recorded for reproducibility |
 | `max_evaluations`  | int       | Compute budget                                              |
 | `started_at`       | datetime  | ISO                                                         |
 | `completed_at`     | datetime  | Nullable                                                    |
@@ -171,31 +190,31 @@ See `docs/phases/phase-{N}-plan.md` for per-phase task breakdowns and acceptance
 
 ### Phase 1 — Data pipeline
 **Goal.** End-to-end ingestion of audio + glyphs into a queryable paired-example store.
-**Scope.** Audio ingestion (upload + optional public-dataset ingester), preprocessing (resample → normalize → frame), glyph rendering from STAM font, contour extraction, Postgres persistence, minimal FastAPI (`/health`, `/api/datasets/*`).
+**Scope.** Audio ingestion (`.m4a` upload), preprocessing (resample → normalize → frame), glyph rendering from STAM font, contour extraction, Postgres persistence, minimal FastAPI (`/health`, `/api/datasets/*`).
 **Exit gate.** See §9.
 **Out of scope.** Any transform search, any UI, any WebSocket, any symbolic regression.
 
 ### Phase 2 — Baseline transform search
 **Goal.** A working `SearchEngine` that fits three baseline `TransformFamily` instances to the dataset and ranks candidates.
 **Scope.** `TransformFamily` protocol, Fourier / Lissajous / phase-space families, `SearchEngine` with grid + CMA-ES, shape-distance metrics, experiment tracker (JSONL + Pydantic). Inference endpoint for one-shot evaluation.
-**Exit gate.** At least one candidate scores below a baseline shape-distance threshold on ≥50% of letters across ≥2 speakers.
+**Exit gate.** At least one candidate scores below a baseline shape-distance threshold on ≥50% of letters across ≥2 held-out accents (leave-one-accent-out).
 **Out of scope.** PySR, dynamical systems, UI.
 
 ### Phase 3 — Expanded search space
 **Goal.** Expand the family zoo and measure generalization rigorously.
-**Scope.** Dynamical-system family (Van der Pol, Duffing, coupled resonators), symbolic regression via PySR (optional dep), cross-speaker generalization eval harness, negative-results reporting scaffolding.
-**Exit gate.** Either (a) a shared-across-letters candidate beats the Phase 2 baseline with statistical significance on held-out speakers, OR (b) the search transcript supports a documented negative-results writeup.
+**Scope.** Dynamical-system family (Van der Pol, Duffing, coupled resonators), Bayesian search strategy, symbolic regression via PySR (optional dep), leave-one-accent-out generalization eval harness, negative-results reporting scaffolding.
+**Exit gate.** Either (a) a shared-across-letters candidate beats the Phase 2 baseline with statistical significance on the held-out accent, OR (b) the search transcript supports a documented negative-results writeup.
 **Out of scope.** UI, production deployment.
 
 ### Phase 4 — Live pronunciation UI
 **Goal.** Interactive tool: speak a letter, see the generated geometry, the target glyph, the shape-distance score.
-**Scope.** Scaffold `frontend/` (React 18 + TS strict + Vite + Zustand + R3F + Chart.js + Socket.IO). WebSocket `/ws/live` with MessagePack binary frames. Real-time audio capture → stream → inference → R3F render.
-**Exit gate.** A user can pronounce each of the 22 letters into the browser and see the inferred geometry + score update at ≥10 Hz.
+**Scope.** Scaffold `frontend/` (React 18 + TS strict + Vite + Zustand + R3F + Chart.js + raw WebSocket). WebSocket `/ws/live` with MessagePack binary frames. Real-time audio capture → stream → inference → R3F render.
+**Exit gate.** A user can exercise each stored glyph form in the browser and see the inferred geometry + score update at ≥10 Hz.
 **Out of scope.** User accounts, persistence of user recordings.
 
 ### Phase 5 — Writeup & negative results
 **Goal.** Paper-grade analysis of what was found (and not found).
-**Scope.** Analysis notebooks, per-family leaderboards, cross-speaker generalization tables, negative-result discussion, methodological reflection.
+**Scope.** Analysis notebooks, per-family leaderboards, cross-accent (leave-one-accent-out) generalization tables, negative-result discussion, methodological reflection.
 **Out of scope.** Any production code change.
 
 ## 7. Architecture
@@ -204,7 +223,7 @@ See `docs/phases/phase-{N}-plan.md` for per-phase task breakdowns and acceptance
 graph TD
     subgraph "External / data sources"
         USER[User microphone<br/>Phase 4]
-        FORVO[Public-dataset ingest<br/>Phase 1: TBD]
+        UPLOAD[".m4a upload Phase 1<br/>POST /api/datasets/audio"]
         FONT[STAM Torah font<br/>backend/data/fonts/]
     end
 
@@ -224,11 +243,11 @@ graph TD
     subgraph "Frontend (React 18 + TS strict, Phase 4)"
         LIVE[LiveRenderer.tsx<br/>@react-three/fiber]
         DASH[Chart.js dashboard]
-        WS[Socket.IO + MessagePack]
+        WS[Raw WebSocket + MessagePack]
     end
 
     USER -->|WebSocket| WS
-    FORVO --> PREP
+    UPLOAD --> PREP
     FONT --> GLYPH
     PREP --> PAIRS
     GLYPH --> PAIRS
@@ -286,16 +305,17 @@ graph LR
 ## 9. Definition-of-Done Gates
 
 ### Phase 1
-- [ ] `docker compose up --build -d` succeeds and `curl localhost:8000/health` returns 200
-- [ ] `POST /api/datasets/audio` accepts a WAV file and stores an `AudioSample` row
-- [ ] `POST /api/datasets/glyphs` renders a letter from the STAM font and stores a `GlyphTarget` row + `.npy` contour
+- [ ] `docker compose up --build -d` succeeds and `curl localhost:8220/health` returns 200
+- [ ] `POST /api/datasets/audio` accepts a `.m4a` upload and stores an `AudioSample` row
+- [ ] `POST /api/datasets/glyphs` renders a glyph form from the STAM font and stores a `GlyphTarget` row + `.npz` contour
+- [ ] `GET /api/datasets/glyphs` lists stored glyph targets with optional `letter` / `glyph_form` filtering
 - [ ] `POST /api/datasets/pairs` associates rows into a `PairedExample`
 - [ ] `GET /api/datasets/pairs` lists paired examples with `split` assignments
 - [ ] `AudioPreprocessor` produces `(num_frames, frame_length) float64` output matching `config.audio_sample_rate_hz`
 - [ ] `GlyphExtractor` produces `(num_contour_points, 2) float64` contours in unit square for every letter
 - [ ] Pytest: 100% line coverage across `backend/src/`, matching test file for every module
 - [ ] Ruff clean (`ruff check .` + `ruff format --check .`)
-- [ ] GitLab CI pipeline green (lint → test → coverage gate → build → docker-build)
+- [ ] GitHub Actions CI pipeline green (lint → test → coverage gate → build → docker-build)
 - [ ] `docs/status.md` and `docs/versions.md` current
 
 ### Phase 2
@@ -308,12 +328,13 @@ graph LR
 
 ### Phase 3
 - [ ] Dynamical-system family implemented with reference-case validation
+- [ ] Bayesian search strategy implemented against the shared `ExperimentRun.search_strategy` vocabulary
 - [ ] Symbolic-regression family behind optional `[symbolic]` extra
-- [ ] Cross-speaker eval harness + report
+- [ ] Leave-one-accent-out eval harness + report
 - [ ] Either a generalizing candidate OR a documented negative-results section in `docs/negative-results.md`
 
 ### Phase 4
-- [ ] `frontend/` scaffolded (React 18 + TS strict + Vite + Zustand + R3F + Chart.js + Socket.IO)
+- [ ] `frontend/` scaffolded (React 18 + TS strict + Vite + Zustand + R3F + Chart.js + raw WebSocket)
 - [ ] WebSocket `/ws/live` with MessagePack binary protocol, bidirectional
 - [ ] Live-pronunciation view renders generated geometry at ≥10 Hz
 - [ ] Chart.js score dashboard shows per-letter shape distance and history
@@ -322,14 +343,14 @@ graph LR
 ### Phase 5
 - [ ] Writeup in `docs/writeup.md` (or equivalent)
 - [ ] Per-family leaderboards
-- [ ] Cross-speaker generalization tables
+- [ ] Cross-accent (leave-one-accent-out) generalization tables
 - [ ] Reproducible experiment manifest
 
 ## 10. Cross-Phase Concerns
 
 - **Canonical unit system.** Audio: sample rate in Hz, frame length in samples, amplitude in `[-1, 1]`. Glyph: unit-square coordinates in `[-0.5, 0.5]`. Conversions live at module boundaries, never mid-calculation.
 - **Reproducibility.** Every `ExperimentRun` records the font name, the full `config.BackendSettings`, the search strategy, and the RNG seed. Never invent or guess numbers.
-- **Data sources.** P1 must include a clear decision on audio sources — user-recorded vs a public dataset (candidates: Common Voice he, Forvo, scraped Torah-reading clips, synthetic TTS as a fallback baseline). This is an open question flagged for resolution in P1 gate planning.
+- **Data sources.** RESOLVED (§11.1): user-recorded `.m4a` uploads only — a single speaker across five accents. No public-dataset ingestion is in scope.
 - **No drive-by changes.** Do not modify the contracts in §3 without an explicit architectural decision recorded here.
 - **Forbidden shortcuts** (carried from the user's original brief):
   - No hand-drawn shaping
@@ -351,8 +372,8 @@ Resolved during initial scaffolding (2026-04-11):
 - Every `AudioSample.source` is `'user'` in Phase 1.
 - Every `AudioSample.speaker_id` is the project owner's opaque ID (stable across sessions).
 - Every `AudioSample.accent` is one of `constants.ACCENTS` (`ashkenazi`, `sephardi`, `moroccan`, `yemenite`, `chabad`).
-- The Phase 1 ingestion UX is a single `POST /api/datasets/audio` endpoint that accepts a multipart `.m4a` upload plus form fields `letter`, `accent`, and `repetition`. The backend decodes, normalizes, and writes a canonical WAV alongside the original m4a under `backend/data/audio/{accent}/{letter}/`. The recording conventions, validation rules, and server flow are fully specified in `docs/recording_protocol.md` — the router and preprocessor implement that doc.
-- The data collection task is: record ≥N repetitions of each of the 22 letters in each of the 5 accents (where N is locked during P1 — initial target: 5 per letter per accent = **550 total samples**).
+- The Phase 1 ingestion UX is a single `POST /api/datasets/audio` endpoint that accepts a multipart `.m4a` upload plus form fields `letter`, `accent`, `repetition`, and optional `pronunciation_variant` (default `plain`). The backend persists only the raw `.m4a` under `backend/data/audio/{accent}/{letter}/{pronunciation_variant}/`; preprocessing is regenerated on demand by `AudioPreprocessor` (no `.wav` sidecar, no `wav_path` field). The recording conventions, validation rules, and server flow are fully specified in `docs/recording_protocol.md` — the router and preprocessor implement that doc.
+- The data collection task is: record ≥N repetitions of each item in `constants.AUDIO_FORM_KEYS` in each of the 5 accents (where N is locked during P1 — current target: 5 per audio form per accent = **700 total samples**). Separately render all 27 `constants.GLYPH_FORMS` as glyph targets.
 - Do NOT build a public-dataset ingester. Out of scope.
 - Do NOT build a CLI recorder or a browser recording page. The user uploads pre-recorded m4a files.
 

@@ -8,7 +8,7 @@ F_θ : x(t) → G       where  x(t) is spoken audio
                              θ     is a constrained, interpretable parameter vector
 ```
 
-Given paired examples `(x_i, L_i)` of (audio sample, target Hebrew-letter contour), we search for the simplest `F_θ` that minimizes `Σ d(F_θ(x_i), L_i)` and generalizes across letters and speakers. Negative results are an acceptable outcome.
+Given paired examples `(x_i, L_i)` of (audio sample, target Hebrew-letter contour), we search for the simplest `F_θ` that minimizes `Σ d(F_θ(x_i), L_i)` and generalizes across letters and accents (a single speaker, leave-one-accent-out — see master plan §11.3). Negative results are an acceptable outcome.
 
 > **What this project is NOT.** Not a classifier (phoneme → label). Not a generative model (latent → pixels). Not a decorative visualization pipeline. Not a black-box neural net dressed as math. See `docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md` §0 for the full problem statement.
 
@@ -36,7 +36,7 @@ graph TD
     end
 
     subgraph "Frontend — Phase 4"
-        WS[Socket.IO + MessagePack]
+        WS[Raw WebSocket + MessagePack]
         LIVE[R3F live renderer]
         DASH[Chart.js dashboard]
     end
@@ -81,12 +81,13 @@ See `docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md` for the full per-phase breakdown
 run_audio_glyph_inference.bat         # Windows
 ```
 
-The launcher builds the Docker stack (Postgres 16 + Redis 7 + backend), polls `/health` until ready, and drops into a `[k] [q] [v] [r]` shutdown/restart loop. See `docs/run_guide.md` for details.
+The launcher builds the Docker stack (Postgres 16 + Redis 7 + backend + frontend), polls `/health` until ready, and drops into a `[k] [q] [v] [r]` shutdown/restart loop. See `docs/run_guide.md` for details.
 
 Once up:
-- Backend: <http://localhost:8000>
-- API docs: <http://localhost:8000/docs>
-- OpenAPI JSON: <http://localhost:8000/openapi.json>
+- Backend: <http://localhost:8220>
+- Frontend: <http://localhost:5220>
+- API docs: <http://localhost:8220/docs>
+- OpenAPI JSON: <http://localhost:8220/openapi.json>
 
 ## Stack at a glance
 
@@ -106,8 +107,8 @@ Once up:
 | Lint / format      | ruff                                                                                                                              |
 | Package manager    | uv                                                                                                                                |
 | Container          | Docker + docker-compose with healthchecks and `depends_on: service_healthy`                                                       |
-| CI/CD              | GitLab CI — lint → test → coverage gate → build → docker-build → manual release                                                  |
-| Frontend (Phase 4) | React 18 · TypeScript strict · Vite · Zustand · @react-three/fiber + drei · Chart.js · socket.io-client                           |
+| CI/CD              | GitHub Actions — lint → test → coverage gate → build → docker-build → manual release                                            |
+| Frontend (Phase 4) | React 18 · TypeScript strict · Vite · Zustand · @react-three/fiber + drei · Chart.js · raw WebSocket + MessagePack                 |
 
 Full dependency rationale (and every version decision) lives in `docs/dependencies.md`.
 
@@ -121,10 +122,11 @@ audio-glyph-inference/
 ├── run_audio_glyph_inference.{sh,bat}     Launcher with [k]/[q]/[v]/[r] loop
 ├── .env                                   Port and credential defaults (override locally)
 ├── .gitignore
-├── .gitlab-ci.yml                         CI/CD pipeline (GitLab)
-├── .claude/
-│   ├── settings.json                      Hooks, permissions
-│   ├── commands/                          /scaffold, /review, /pre-commit, /validate, /phase-status, /new-transform-family
+├── .github/workflows/                     CI/CD pipeline (GitHub Actions: ci.yml + release.yml)
+├── .codex/
+│   ├── hooks.json                         SessionStart / PreToolUse / PostToolUse / PreCompact / Stop hooks
+│   └── commands/                          /scaffold, /review, /pre-commit, /validate, /phase-status, /new-transform-family
+├── .agents/
 │   └── skills/                            phase-awareness, transform-protocol, data-driven-check, validation-protocol, frontend-protocol
 ├── docs/
 │   ├── AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md    Authoritative goals, contracts, phase gates, Mermaid diagrams
@@ -170,4 +172,4 @@ audio-glyph-inference/
 
 ## Current state
 
-See `docs/status.md`. At the time of this scaffold the project is **Phase 1, scaffold-only**: every simulation method raises `NotImplementedError` and there is no logic yet. The next action is to decide the audio data source (see master plan §11.1) and place a STAM Torah font in `backend/data/fonts/`.
+See `docs/status.md` for live state. Buildable Phase 1-4 code is implemented through the live pronunciation UI, and Phase 5 writeup/reproducibility scaffolding is present. The remaining empirical gates require real Stage-7 recordings, calibrated thresholds, and user-side live-loop testing.

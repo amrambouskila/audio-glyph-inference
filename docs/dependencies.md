@@ -1,6 +1,6 @@
 # Dependencies
 
-Every third-party package in `backend/pyproject.toml` is here with *why*. When adding, removing, or upgrading, update this file. See global `CLAUDE.md` §5 for the hard-constraint stack rules.
+Every third-party package in `backend/pyproject.toml` and `frontend/package.json` is here with *why*. When adding, removing, or upgrading, update this file. See global `CLAUDE.md` §5 for the hard-constraint stack rules.
 
 ## Web / API
 
@@ -22,7 +22,7 @@ Every third-party package in `backend/pyproject.toml` is here with *why*. When a
 
 | Package | Why |
 |---------|-----|
-| `sqlalchemy[asyncio]>=2.0.27` | Default ORM per global `CLAUDE.md` §5. SQLAlchemy owns the DB layer; Pydantic owns API. |
+| `sqlalchemy[asyncio]>=2.0.27` | Default ORM per global `CLAUDE.md` §5. SQLAlchemy owns the DB layer; Pydantic owns API. Pulls `greenlet` (its async bridge) — also why `[tool.coverage.run]` sets `concurrency = ["thread", "greenlet"]` so async post-await lines are traced. |
 | `asyncpg` | Default async Postgres driver per global `CLAUDE.md` §5 (never `psycopg2` for new work). |
 | `alembic` | Migrations. Schema changes land as alembic revisions, not hand-edited DDL. |
 
@@ -40,6 +40,9 @@ Every third-party package in `backend/pyproject.toml` is here with *why*. When a
 | `scipy` | Solvers (`scipy.optimize` for CMA-ES-adjacent work), spatial (`scipy.spatial.cKDTree` — NEVER `KDTree`), signal (`scipy.signal` for filtering). |
 | `pandas` | Default DataFrame library per global `CLAUDE.md` §5. Used for experiment logs, eval tables, and notebook analysis. **Not polars.** |
 | `numba` | JIT for hot loops that can't be vectorized in NumPy (ODE integration inside transforms, per-frame scoring). |
+| `cma` | pycma (BSD-3, pure-Python) implements the Phase-2 `cma-es` search strategy with explicit seed control and stable normalized-genotype options. SciPy does not provide a CMA-ES implementation with this API. |
+
+The in-repo Phase-3 Bayesian optimizer also uses `scipy.special.ndtr` for the expected-improvement acquisition; no additional optimizer dependency is required.
 
 ## Audio
 
@@ -62,7 +65,7 @@ Every third-party package in `backend/pyproject.toml` is here with *why*. When a
 
 | Package | Why |
 |---------|-----|
-| `torch` | Default DL framework per global `CLAUDE.md` §5. Used in Phase 3+ for any learned feature extraction, and for gradient-based parameter search in transform families when analytic gradients are available. |
+| `torch` | Default DL framework per global `CLAUDE.md` §5. Used in Phase 3+ for any learned feature extraction, and for gradient-based parameter search in transform families when analytic gradients are available. Pinned to the CPU wheel index via `[tool.uv.sources]` → `download.pytorch.org/whl/cpu` (CPU-only project; avoids the multi-GB CUDA build); the Dockerfile install step passes the same `--extra-index-url` so the pinned `+cpu` wheels are locatable. |
 | `torchaudio` | PyTorch-native audio ops (used where librosa would be slower, e.g. in-batch mel spectrogram extraction). |
 
 ## Visualization (static)
@@ -78,7 +81,7 @@ Every third-party package in `backend/pyproject.toml` is here with *why*. When a
 |---------|-----|
 | `rich` | Pretty-printed experiment run summaries in the CLI tracker. |
 | `msgpack` | Binary serialization for WebSocket payloads (Phase 4). JSON is only used for metadata. |
-| `httpx` | Default HTTP client (sync or async) per global `CLAUDE.md` §5 — used for any external dataset fetching. |
+| `httpx` | Default HTTP client per global `CLAUDE.md` §5 — used as the async test client (`httpx.AsyncClient`) for FastAPI integration tests. No external dataset fetching (master plan §11.1). |
 
 ## Optional extras
 
@@ -86,6 +89,35 @@ Every third-party package in `backend/pyproject.toml` is here with *why*. When a
 |------------|---------|-----|
 | `symbolic` | `pysr` | Symbolic regression family — deferred to Phase 3 because it drags in a Julia runtime. Installed only when Phase 3 work begins. |
 | `symbolic` | `sympy` | Required by PySR for expression manipulation. |
+
+Note: the `symbolic` extra now backs the implemented Phase-3 PySR proposal/search path; it remains optional because
+saved symbolic candidates can be evaluated without Julia/PySR installed.
+
+## Frontend runtime
+
+| Package | Why |
+|---------|-----|
+| `react` / `react-dom` | Phase-4 browser UI runtime. |
+| `vite` | Frontend dev server and production bundler. |
+| `typescript` | Strict frontend typing. |
+| `zustand` | Small serializable UI/live-state store; no Three.js objects are stored in it. |
+| `@react-three/fiber` / `@react-three/drei` / `three` | R3F contour overlay for target and generated glyph geometry. |
+| `chart.js` / `react-chartjs-2` | Live shape-distance history dashboard. |
+| `@msgpack/msgpack` | Binary WebSocket frame encoding/decoding for the Phase-4 live loop. |
+| `lucide-react` | Consistent icon buttons for toolbar controls. |
+
+## Frontend dev
+
+| Package | Why |
+|---------|-----|
+| `@vitejs/plugin-react` | React Fast Refresh and Vite JSX transform. |
+| `eslint` / `@eslint/js` / `typescript-eslint` | Frontend lint gate. |
+| `eslint-plugin-react-hooks` / `eslint-plugin-react-refresh` | React hook and Fast Refresh correctness checks. |
+| `vitest` / `@vitest/coverage-v8` | Frontend unit-test runner and coverage gate for utility and focused component behavior. |
+| `@testing-library/react` / `@testing-library/jest-dom` / `jsdom` | DOM-oriented frontend tests. |
+| `@types/react` / `@types/react-dom` | React TypeScript declarations. |
+| `@playwright/test` | Real-browser frontend smoke tests for the Phase-4 live UI, including R3F canvas rendering across desktop/mobile Chromium. |
+| `pngjs` / `@types/pngjs` | Decode Playwright canvas screenshots for deterministic nonblank pixel assertions. |
 
 ## Dev group
 
@@ -96,3 +128,4 @@ Every third-party package in `backend/pyproject.toml` is here with *why*. When a
 | `pytest-cov` | Coverage gate enforcement (`--cov-fail-under=100`). |
 | `pytest-mock` | Used ONLY for non-core seams (e.g. HTTP clients at the boundary). Never for core math or the database. |
 | `ruff` | Default lint + format. Replaces black, isort, flake8, pylint per global `CLAUDE.md` §5. |
+| `testcontainers[postgres]` | Spins a disposable real Postgres for integration tests when `BACKEND_DATABASE_URL` is unset (local `uv run pytest`); CI uses its `services: postgres` instead. Real DB, never mocked (CLAUDE.md §13). |

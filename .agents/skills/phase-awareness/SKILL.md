@@ -17,7 +17,7 @@ This project is phased. Work that makes sense in Phase 3 is out of scope in Phas
 
 - **Phase 1 — Data pipeline.** Build: audio ingestion, preprocessing, glyph rendering, contour extraction, paired-example storage, minimal FastAPI with health + dataset endpoints. Do NOT build: transform search engines, candidate ranking, live UI, WebSocket streaming.
 - **Phase 2 — Baseline transform search.** Build: the `TransformFamily` protocol, three baseline families (Fourier, Lissajous, phase-space), `SearchEngine`, shape-distance metrics, experiment tracker. Do NOT build: dynamical systems, symbolic regression, PySR, live UI.
-- **Phase 3 — Expanded search space.** Build: dynamical-system families, symbolic regression via PySR (optional dep), cross-speaker generalization eval. Do NOT build: live UI.
+- **Phase 3 — Expanded search space.** Build: dynamical-system families, symbolic regression via PySR (optional dep), leave-one-accent-out generalization eval. Do NOT build: live UI.
 - **Phase 4 — Live pronunciation UI.** Build: React 18 + TS strict + Vite + R3F frontend, WebSocket `/ws/live` with MessagePack frames, Chart.js scoring dashboard. Scaffolds the `frontend/` directory for the first time.
 - **Phase 5 — Writeup.** Build: paper-grade analysis, negative-results reporting. No new production code.
 

@@ -57,16 +57,18 @@ The server is lenient with loudness (it normalizes) but strict with clipping (it
 
 ## 4. Session structure
 
-Record in **session blocks**, one block per `(accent, letter)` pair, with all N repetitions for that pair recorded back-to-back in one sitting. This gives each `(accent, letter, repetition)` a consistent intra-session tone.
+Record in **session blocks**, one block per `(accent, letter, pronunciation_variant)` audio form, with all N repetitions for that form recorded back-to-back in one sitting. This gives each `(accent, letter, pronunciation_variant, repetition)` a consistent intra-session tone.
 
 **Default N = 5** (locked at the first recording session; change here if you adjust).
 
 **Default session order:**
-1. Pick one accent at a time. Finish all 22 letters × 5 repetitions = 110 files in that accent before moving on.
-2. Within an accent, iterate through letters in `constants.HEBREW_LETTERS` order.
-3. Within a (letter, accent) block, do all 5 repetitions without stopping.
+1. Pick one accent at a time. Finish all 28 audio forms × 5 repetitions = 140 files in that accent before moving on.
+2. Within an accent, iterate through `constants.AUDIO_FORM_KEYS` order: 16 non-begadkefat `plain` forms plus hard/soft forms for `ב ג ד כ פ ת`.
+3. Within an `(accent, letter, pronunciation_variant)` block, do all 5 repetitions without stopping.
 
-A full dataset pass produces **5 accents × 22 letters × 5 repetitions = 550 `.m4a` files**.
+A full dataset pass produces **5 accents × 28 audio forms × 5 repetitions = 700 `.m4a` files**.
+
+Sofit forms (`ך ם ן ף ץ`) are written glyph forms only. They do not require separate audio recordings; the backend renders them through `POST /api/datasets/glyphs` with `glyph_form`.
 
 You can do this in multiple sessions. `AudioSample.recorded_at` captures the timestamp; `AudioSample.source` stays `'user'`.
 
@@ -74,7 +76,7 @@ You can do this in multiple sessions. `AudioSample.recorded_at` captures the tim
 
 ## 5. File naming on disk (pre-upload)
 
-The endpoint takes `letter`, `accent`, `repetition` as form fields, so **filename is not load-bearing** — the server derives the storage path from the form fields, not the filename.
+The endpoint takes `letter`, `accent`, `pronunciation_variant`, and `repetition` as form fields, so **filename is not load-bearing** — the server derives the storage path from the form fields, not the filename.
 
 That said, for your own organization before upload, a recommended pattern is:
 
@@ -98,11 +100,10 @@ That said, for your own organization before upload, a recommended pattern is:
 Server-side, the canonical on-disk layout (created by the dataset router) is:
 
 ```
-backend/data/audio/{accent}/{letter}/{YYYY-MM-DD-HHMMSS}-rep{N}.m4a
-backend/data/audio/{accent}/{letter}/{YYYY-MM-DD-HHMMSS}-rep{N}.wav   # resampled + normalized at ingest
+backend/data/audio/{accent}/{letter}/{pronunciation_variant}/{YYYY-MM-DD-HHMMSS}-rep{N}.m4a
 ```
 
-Both files land. The raw `.m4a` is the source of truth; the `.wav` is a derived artifact and can be regenerated from the m4a at any time by re-running the preprocessor. If the preprocessor policy changes, we re-run it — we don't re-record.
+Only the raw `.m4a` is persisted — it is the source of truth. The preprocessed (resampled, normalized, trimmed) signal is derived on demand by re-running `AudioPreprocessor` and is **not** written to disk in Phase 1 (no `.wav` sidecar, no `wav_path` field on `AudioSample` — Decision #10 = reconstruct-not-store). If the preprocessor policy changes, we re-run it — we don't re-record.
 
 ---
 
@@ -111,42 +112,40 @@ Both files land. The raw `.m4a` is the source of truth; the `.wav` is a derived 
 For each file:
 
 ```bash
-curl -X POST http://localhost:8000/api/datasets/audio \
+curl -X POST http://localhost:8220/api/datasets/audio \
   -F "file=@ashkenazi/alef-01.m4a" \
   -F "letter=א" \
   -F "accent=ashkenazi" \
+  -F "pronunciation_variant=plain" \
   -F "repetition=1"
 ```
 
-Response: `AudioSample` JSON with `id`, `file_path`, `duration_s`, `sample_rate_hz`, and the derived WAV path.
+Response: `AudioSample` JSON with `id`, `letter`, `accent`, `pronunciation_variant`, `repetition`, `file_path` (the stored `.m4a`), `sample_rate_hz` (native), and `duration_s` (post-trim).
 
-Batch uploads are a shell loop over the directory tree above. A helper script (`tools/upload_batch.sh` or similar) may be added in Phase 1 task #13 — not yet decided whether as bash or a Python click CLI. Ask the user before building one.
+Batch uploads are a shell loop over the directory tree above. A helper script (`tools/upload_batch.sh` or similar) may be added during the Phase 1 batch-upload step — not yet decided whether as bash or a Python click CLI. Ask the user before building one.
 
 ---
 
 ## 7. What the server does with the upload
 
-1. Validates `letter ∈ constants.HEBREW_LETTERS` and `accent ∈ constants.ACCENTS`.
-2. Rejects if `repetition` is not a positive integer.
-3. Checks file MIME type is `audio/mp4` / `audio/x-m4a` / `audio/aac` (permissive).
-4. Writes the raw `.m4a` to `backend/data/audio/{accent}/{letter}/{timestamp}-rep{N}.m4a`.
-5. Decodes via `librosa.load(sr=None)` (audioread → ffmpeg backend).
-6. Validates duration ∈ [1.0, 3.0] s. Rejects otherwise.
-7. Validates peak amplitude ≤ -1 dBFS. Rejects if clipped.
-8. Runs `AudioPreprocessor.load`: resample to 16 kHz, loudness-normalize to -23 LUFS, trim leading/trailing silence via VAD, frame into `(num_frames, frame_length)`.
-9. Writes the canonical WAV alongside the m4a.
-10. Inserts an `AudioSample` row with both paths, the measured sample rate, the final duration, and the `accent`.
-11. Returns the row as JSON.
+1. Validates `letter ∈ constants.HEBREW_LETTERS`, `accent ∈ constants.ACCENTS`, and `pronunciation_variant ∈ constants.PRONUNCIATION_VARIANTS_BY_BASE_LETTER[letter]` (422 otherwise).
+2. Rejects if `repetition` is not a positive integer (422).
+3. Checks file MIME type is `audio/mp4` / `audio/x-m4a` / `audio/aac` (415 otherwise).
+4. Rejects if the upload exceeds `config.audio_max_upload_bytes` (413).
+5. Writes the raw `.m4a` to `backend/data/audio/{accent}/{letter}/{pronunciation_variant}/{timestamp}-rep{N}.m4a`.
+6. Runs `AudioPreprocessor.load`, which decodes (`librosa.load(sr=None)` → audioread → ffmpeg), validates duration ∈ [1.0, 3.0] s and peak ≤ -1 dBFS, resamples to 16 kHz, loudness-normalizes to -23 LUFS, VAD-trims, validates the active-speech span, and frames into `(num_frames, frame_length)`. A failed check raises `AudioValidationError` → 422 (and the stored `.m4a` is removed).
+7. Inserts an `AudioSample` row (the `.m4a` path, the native sample rate, the post-trim duration, the `accent`, `pronunciation_variant`, `repetition`, and the owner `speaker_id`). A duplicate `(speaker_id, accent, letter, pronunciation_variant, repetition)` take → 409.
+8. Returns the row as JSON.
 
-Everything from step 5 onward lives in `AudioPreprocessor` — the router is a thin wrapper.
+The decode + validation + preprocessing (step 6) live in `AudioPreprocessor`; the router handles request validation, storage, persistence, and error mapping.
 
 ---
 
 ## 8. Test fixtures
 
-For CI and local testing, commit a **single tiny `.m4a` fixture** (< 50 KB, ~1 s of silence + a synthetic tone) under `backend/tests/fixtures/test-sample.m4a`. This fixture is NOT real Hebrew audio — it exists only to exercise the decode path, the storage path, and the validation branches. Real data lives in `backend/data/audio/` and is gitignored.
+For CI and local testing, commit a **single tiny `.m4a` fixture** (< 50 KB, ~1 s of silence + a synthetic tone) under `backend/tests/fixtures/test-sample.m4a`. This fixture is NOT real Hebrew audio — it exists only to exercise the real `.m4a` decode path when an ffmpeg/audioread backend is available. Real data lives in `backend/data/audio/` and is gitignored.
 
-Integration tests upload this fixture through `POST /api/datasets/audio` and assert the row lands. A separate unit test exercises the preprocessor directly on a numpy-synthesized frame matrix without touching the endpoint.
+Endpoint integration tests use a soundfile-decodable synthetic upload payload with an accepted `.m4a` MIME type so `uv run pytest` stays self-contained on hosts without ffmpeg. The router still writes the payload to the canonical `.m4a` storage path and runs the real `AudioPreprocessor.load`, so storage, validation, persistence, cleanup, and duplicate-take branches remain covered. A separate preprocessor smoke test decodes the committed `.m4a` fixture when ffmpeg is available, and skips only that codec-specific check when the host has no backend.
 
 ---
 

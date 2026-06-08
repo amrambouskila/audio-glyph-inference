@@ -1,9 +1,9 @@
-"""Tests for src/api/routers/health.py (Phase 1 scaffold)."""
+"""Tests for src/api/routers/health.py."""
 
 from __future__ import annotations
 
-from src.api.routers import health
 
-
-def test_router_annotation_declared() -> None:
-    assert "router" in health.__annotations__
+async def test_health_returns_ok(client) -> None:
+    resp = await client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}

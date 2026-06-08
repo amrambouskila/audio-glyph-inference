@@ -5,9 +5,13 @@ REM ============================================================
 REM              CONFIGURATION (EDIT THESE ONLY)
 REM ============================================================
 set "COMPOSE_FILE=docker-compose.yml"
-set "BACKEND_PORT=8000"
+if not defined BACKEND_PORT set "BACKEND_PORT=8220"
+if not defined VITE_PORT set "VITE_PORT=5220"
+if not defined POSTGRES_PORT set "POSTGRES_PORT=5520"
+if not defined REDIS_PORT set "REDIS_PORT=6520"
 set "BACKEND_URL=http://localhost:%BACKEND_PORT%"
 set "BACKEND_DOCS_URL=%BACKEND_URL%/docs"
+set "FRONTEND_URL=http://localhost:%VITE_PORT%"
 set "IMAGE_PREFIX=audio-glyph-inference"
 
 REM ============================================================
@@ -15,12 +19,13 @@ REM                          BANNER
 REM ============================================================
 echo.
 echo ============================================================
-echo            audio-glyph-inference -- Phase 1
+echo            audio-glyph-inference
 echo ============================================================
 echo   Services:
+echo     frontend  (Live UI)   -^> %FRONTEND_URL%
 echo     backend   (FastAPI)   -^> %BACKEND_URL%
-echo     postgres              -^> localhost:5432
-echo     redis                 -^> localhost:6379
+echo     postgres              -^> localhost:%POSTGRES_PORT%
+echo     redis                 -^> localhost:%REDIS_PORT%
 echo ============================================================
 echo.
 
@@ -35,14 +40,23 @@ echo ==============================
 echo   k = stop (keep images)
 echo   q = stop + remove project images
 echo   v = stop + remove images + volumes
-echo   r = full restart (stop, remove, rebuild, relaunch)
+echo   r = full restart (stop, rebuild, relaunch -- keeps images)
 echo ==============================
 
 REM ============================================================
 REM                     MAIN LOOP
 REM ============================================================
 :main_loop
-set /p "CHOICE=Enter selection (k/q/v/r): "
+set "CHOICE="
+if defined AGI_AUTO_CHOICES (
+    for /f "tokens=1* delims=," %%A in ("!AGI_AUTO_CHOICES!") do (
+        set "CHOICE=%%A"
+        set "AGI_AUTO_CHOICES=%%B"
+    )
+    echo Enter selection ^(k/q/v/r^): !CHOICE!
+) else (
+    set /p "CHOICE=Enter selection (k/q/v/r): " || goto end_script
+)
 if /I "%CHOICE%"=="k" goto do_stop
 if /I "%CHOICE%"=="q" goto do_cleanup
 if /I "%CHOICE%"=="v" goto do_cleanup_volumes
@@ -53,14 +67,14 @@ goto main_loop
 :do_stop
 echo.
 echo Stopping containers...
-docker compose -f "%COMPOSE_FILE%" down
+docker compose -f "%COMPOSE_FILE%" down --remove-orphans <nul
 echo Done.
 goto end_script
 
 :do_cleanup
 echo.
 echo Stopping containers...
-docker compose -f "%COMPOSE_FILE%" down --remove-orphans
+docker compose -f "%COMPOSE_FILE%" down --remove-orphans <nul
 call :remove_images
 echo Done.
 goto end_script
@@ -68,7 +82,7 @@ goto end_script
 :do_cleanup_volumes
 echo.
 echo Stopping containers and removing volumes...
-docker compose -f "%COMPOSE_FILE%" down --volumes --remove-orphans
+docker compose -f "%COMPOSE_FILE%" down --volumes --remove-orphans <nul
 call :remove_images
 echo Done.
 goto end_script
@@ -76,9 +90,8 @@ goto end_script
 :do_restart
 echo.
 echo === FULL RESTART ===
-echo Stopping containers...
-docker compose -f "%COMPOSE_FILE%" down --remove-orphans
-call :remove_images
+echo Stopping containers (images kept; rebuild uses cache)...
+docker compose -f "%COMPOSE_FILE%" down --remove-orphans <nul
 echo.
 call :start_service
 goto show_menu
@@ -88,7 +101,7 @@ REM                    HELPER: START SERVICE
 REM ============================================================
 :start_service
 echo Starting Docker Compose...
-docker compose -f "%COMPOSE_FILE%" up --build -d
+docker compose -f "%COMPOSE_FILE%" up --build -d <nul
 
 echo.
 echo Waiting for backend /health to respond...
@@ -97,9 +110,9 @@ set /a WAITED=0
 set /a MAX_WAIT=90
 
 :start_wait_loop
-curl -fsS "%BACKEND_URL%/health" >nul 2>nul
+curl -fsS "%BACKEND_URL%/health" >nul 2>nul <nul
 if %ERRORLEVEL%==0 goto start_ready
-timeout /t 1 /nobreak >nul
+timeout /t 1 /nobreak >nul <nul
 set /a WAITED+=1
 if %WAITED% GEQ %MAX_WAIT% (
     echo Warning: backend did not respond within %MAX_WAIT%s.
@@ -114,11 +127,12 @@ echo.
 echo ============================================================
 echo   Services are running.
 echo.
+echo   Frontend      : %FRONTEND_URL%
 echo   Backend health : %BACKEND_URL%/health
 echo   API docs       : %BACKEND_DOCS_URL%
 echo   OpenAPI JSON   : %BACKEND_URL%/openapi.json
 echo ============================================================
-start "" "%BACKEND_DOCS_URL%"
+if not "%AGI_SKIP_BROWSER%"=="1" start "" "%FRONTEND_URL%" <nul
 goto :eof
 
 REM ============================================================
