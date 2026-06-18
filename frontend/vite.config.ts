@@ -13,5 +13,10 @@ export default defineConfig({
       }
     }
   },
-  plugins: [react()]
+  plugins: [react()],
+  server: {
+    host: "0.0.0.0",
+    port: Number.parseInt(process.env.VITE_PORT ?? "5220", 10),
+    strictPort: true
+  }
 });
