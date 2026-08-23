@@ -24,8 +24,9 @@ jobs:
           python-version: "3.11"
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsndfile1 libgl1 libglib2.0-0 ffmpeg
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      # Pinned action instead of `curl | sh`: a compromised or hijacked install script would
+      # otherwise execute arbitrary code in the runner. Matches release.yml and the rest of the fleet.
+      - uses: astral-sh/setup-uv@v3
       - name: Install project
         run: |
           export PATH="$HOME/.local/bin:$PATH"
@@ -37,9 +38,60 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
-  test:
+  sast:
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsndfile1 libgl1 libglib2.0-0 ffmpeg
+      # Pinned action instead of `curl | sh`: a compromised or hijacked install script would
+      # otherwise execute arbitrary code in the runner. Matches release.yml and the rest of the fleet.
+      - uses: astral-sh/setup-uv@v3
+      - name: Install project
+        working-directory: backend
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv
+          uv pip install -e '.[dev]' pip-audit
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python,javascript-typescript
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: codeql
+      - name: Semgrep
+        run: |
+          pipx run semgrep scan --config auto --config p/owasp-top-ten --config p/python --config p/typescript --config p/react --config p/docker --severity ERROR --error --sarif --output semgrep.sarif || echo "SEMGREP_FAILED=1" >> "$GITHUB_ENV"
+      - uses: github/codeql-action/upload-sarif@v3
+        if: ${{ !cancelled() }}
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+      - name: Fail on Semgrep findings
+        run: test -z "${SEMGREP_FAILED:-}"
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Backend dependency audit
+        working-directory: backend
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv run pip-audit
+
+  test:
+    runs-on: ubuntu-latest
+    needs: sast
     permissions:
       contents: read
       checks: write
@@ -69,8 +121,9 @@ jobs:
           python-version: "3.11"
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsndfile1 libgl1 libglib2.0-0 ffmpeg
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      # Pinned action instead of `curl | sh`: a compromised or hijacked install script would
+      # otherwise execute arbitrary code in the runner. Matches release.yml and the rest of the fleet.
+      - uses: astral-sh/setup-uv@v3
       - name: Install project
         run: |
           export PATH="$HOME/.local/bin:$PATH"
@@ -103,8 +156,9 @@ jobs:
           python-version: "3.11"
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsndfile1 libgl1 libglib2.0-0 ffmpeg
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      # Pinned action instead of `curl | sh`: a compromised or hijacked install script would
+      # otherwise execute arbitrary code in the runner. Matches release.yml and the rest of the fleet.
+      - uses: astral-sh/setup-uv@v3
       - name: Build
         run: |
           export PATH="$HOME/.local/bin:$PATH"
@@ -116,7 +170,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
-    needs: lint
+    needs: sast
     permissions:
       contents: read
       checks: write
@@ -174,6 +228,8 @@ jobs:
         with:
           context: backend
           push: false
+          load: true
+          tags: audio-glyph-inference-backend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build frontend image
@@ -181,5 +237,21 @@ jobs:
         with:
           context: frontend
           push: false
+          load: true
+          tags: audio-glyph-inference-frontend:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Trivy scan backend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: audio-glyph-inference-backend:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Trivy scan frontend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: audio-glyph-inference-frontend:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true

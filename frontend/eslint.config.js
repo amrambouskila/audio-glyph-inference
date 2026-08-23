@@ -1,12 +1,16 @@
 import js from "@eslint/js";
+import noUnsanitized from "eslint-plugin-no-unsanitized";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import security from "eslint-plugin-security";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   { ignores: ["dist", "playwright-report", "test-results"] },
   js.configs.recommended,
   ...tseslint.configs.strict,
+  security.configs.recommended,
+  noUnsanitized.configs.recommended,
   {
     files: ["**/*.{ts,tsx}"],
     plugins: {

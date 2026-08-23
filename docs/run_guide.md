@@ -134,6 +134,21 @@ npm run test:browser
 npm run build
 ```
 
+Local SAST reproduction (mirrors the `sast` CI stage specified in `CLAUDE.md` §13A; HIGH/CRITICAL findings block):
+
+```bash
+cd backend
+uv run semgrep scan --config auto --error .
+uv run pip-audit
+
+cd ../frontend
+npm audit --audit-level=high
+npm run lint
+
+cd ..
+gitleaks detect --no-git --redact
+```
+
 On Windows PowerShell, use `npm.cmd` for the frontend commands if the `npm.ps1` shim is blocked by execution policy.
 
 ## API docs

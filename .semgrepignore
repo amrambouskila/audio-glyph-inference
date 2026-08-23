@@ -1,0 +1,25 @@
+# NOTE: creating this file REPLACES semgrep's built-in ignore list, so the standard
+# dependency/build directories have to be restated here or they start getting scanned.
+:include .gitignore
+.git/
+node_modules/
+vendor/
+.venv/
+venv/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+build/
+coverage/
+.pnpm-store/
+*.min.js
+*.lock
+.semgrepignore
+
+# Project-specific: prose and generated artifacts, not executable source. An insecure-looking
+# URL scheme in a docs table or a plan document is documentation, not a connection the app
+# opens. Secrets in these files are still covered by gitleaks, which scans the tree separately.
+PROJECT_DOCUMENTATION.html
+*.md

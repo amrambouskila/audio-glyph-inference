@@ -56,4 +56,6 @@
 - `GET /api/datasets/pairs?split=train&accent=ashkenazi` returns a paginated list.
 - `pytest` exits 0 with 100% coverage.
 - `ruff check .` and `ruff format --check .` clean.
-- GitHub Actions: all stages green.
+- GitHub Actions: all stages green (lint → sast → test → coverage gate → build → docker-build).
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification.
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`.

@@ -1,6 +1,6 @@
 ---
 name: pre-commit
-description: Read-only pre-commit audit — tests, lint, coverage, contracts, docs. Never stages or commits.
+description: Read-only pre-commit audit — tests, lint, SAST, coverage, contracts, docs. Never stages or commits.
 ---
 
 # Pre-Commit Audit
@@ -19,17 +19,21 @@ Re-read `AGENTS.md`, `docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md`, `docs/status.m
 2. **Lint**
    - Run `cd backend && uv run ruff check .` and `uv run ruff format --check .`.
    - Report any findings.
-3. **Coverage gate**
+3. **SAST**
+   - Run `cd backend && uv run semgrep scan --config auto --error . && uv run pip-audit`, `cd frontend && npm audit --audit-level=high`, and `gitleaks detect --no-git --redact` from the repo root.
+   - Any HIGH/CRITICAL finding is a blocker. List MEDIUM findings with their inline justification; an unjustified MEDIUM is a blocker.
+   - For every changed input boundary, confirm its row in `AGENTS.md` §13A `<security>` still describes the code (injection classes + defense); a new boundary without a row is a blocker.
+4. **Coverage gate**
    - Verify `--cov-fail-under=100` still holds. If not, list uncovered lines.
-4. **Contract integrity**
+5. **Contract integrity**
    - For each changed Pydantic model, confirm the matching ORM row was also updated.
    - For each changed transform family, confirm the protocol methods (`name`, `parameter_space`, `forward`) are still intact.
-5. **Data-driven check**
+6. **Data-driven check**
    - Grep changed files for hard-coded numeric literals outside `constants.py` / `config.py`. Flag any hits.
-6. **Docs**
+7. **Docs**
    - Did any logic change land without an update to `docs/status.md`? Flag it.
    - Did `docs/versions.md` get a heading for the computed next version? Compute it from `backend/pyproject.toml`'s `version` field.
-7. **Forward-compat**
+8. **Forward-compat**
    - Do any changes conflict with the next phase in the master plan?
 
 ## Report
@@ -39,6 +43,7 @@ Re-read `AGENTS.md`, `docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md`, `docs/status.m
 
 Tests          : PASS / FAIL (N failed)
 Lint           : PASS / FAIL
+SAST           : CLEAN / FINDINGS (HIGH/CRITICAL: N; MEDIUM unjustified: N; boundaries undocumented: list)
 Coverage       : N% (gate 100%)
 Contracts      : OK / DRIFT (list files)
 Data-driven    : OK / HARD-CODED (list file:line)

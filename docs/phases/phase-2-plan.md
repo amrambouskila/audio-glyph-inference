@@ -285,6 +285,13 @@ exit_threshold(letter) = baseline_margin Â· d_circle(letter)             # bas
 
 ---
 
+### CI gates (in addition to the numeric exit gate)
+
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification.
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`.
+
+---
+
 ## 7. The feasibility probe â€” existential-risk entry gate
 
 A one-page GO/NO-GO **before** spending search compute. `backend/scripts/feasibility_probe.py` (driver) + pure core in `backend/src/simulation/feasibility_probe.py` (one class). Uses the formalized affine-Fourier family fit by **closed-form ridge lstsq** (no optimizer â†’ removes "the search was too weak" as a confound).

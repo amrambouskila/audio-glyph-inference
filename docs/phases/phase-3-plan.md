@@ -26,3 +26,8 @@ One of:
 
 - (a) A shared-across-letters candidate beats the Phase 2 baseline with statistical significance on the held-out accent, documented in a results note, OR
 - (b) A negative-results writeup explains the search transcript and the sufficiency of the search space tested.
+
+In either case:
+
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification.
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`.

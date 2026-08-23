@@ -315,7 +315,9 @@ graph LR
 - [ ] `GlyphExtractor` produces `(num_contour_points, 2) float64` contours in unit square for every letter
 - [ ] Pytest: 100% line coverage across `backend/src/`, matching test file for every module
 - [ ] Ruff clean (`ruff check .` + `ruff format --check .`)
-- [ ] GitHub Actions CI pipeline green (lint → test → coverage gate → build → docker-build)
+- [ ] GitHub Actions CI pipeline green (lint → sast → test → coverage gate → build → docker-build)
+- [ ] SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- [ ] New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 - [ ] `docs/status.md` and `docs/versions.md` current
 
 ### Phase 2
@@ -325,6 +327,8 @@ graph LR
 - [ ] `POST /api/experiments` and `GET /api/experiments/{id}` functional
 - [ ] `POST /api/inference` evaluates one audio sample against a candidate
 - [ ] At least one candidate achieves documented baseline shape-distance threshold
+- [ ] SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- [ ] New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 
 ### Phase 3
 - [ ] Dynamical-system family implemented with reference-case validation
@@ -332,6 +336,8 @@ graph LR
 - [ ] Symbolic-regression family behind optional `[symbolic]` extra
 - [ ] Leave-one-accent-out eval harness + report
 - [ ] Either a generalizing candidate OR a documented negative-results section in `docs/negative-results.md`
+- [ ] SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- [ ] New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 
 ### Phase 4
 - [ ] `frontend/` scaffolded (React 18 + TS strict + Vite + Zustand + R3F + Chart.js + raw WebSocket)
@@ -339,12 +345,16 @@ graph LR
 - [ ] Live-pronunciation view renders generated geometry at ≥10 Hz
 - [ ] Chart.js score dashboard shows per-letter shape distance and history
 - [ ] Vitest 100% coverage on `src/utils/` frontend logic
+- [ ] SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- [ ] New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 
 ### Phase 5
 - [ ] Writeup in `docs/writeup.md` (or equivalent)
 - [ ] Per-family leaderboards
 - [ ] Cross-accent (leave-one-accent-out) generalization tables
 - [ ] Reproducible experiment manifest
+- [ ] SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- [ ] New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 
 ## 10. Cross-Phase Concerns
 
@@ -352,6 +362,7 @@ graph LR
 - **Reproducibility.** Every `ExperimentRun` records the font name, the full `config.BackendSettings`, the search strategy, and the RNG seed. Never invent or guess numbers.
 - **Data sources.** RESOLVED (§11.1): user-recorded `.m4a` uploads only — a single speaker across five accents. No public-dataset ingestion is in scope.
 - **No drive-by changes.** Do not modify the contracts in §3 without an explicit architectural decision recorded here.
+- **Security.** SAST is a mandatory pipeline stage from the first pipeline onward and every input boundary is injection-safe by construction — see §12 and `CLAUDE.md` `<security>`.
 - **Forbidden shortcuts** (carried from the user's original brief):
   - No hand-drawn shaping
   - No manually nudging outputs to resemble letters
@@ -402,3 +413,29 @@ Resolved during initial scaffolding (2026-04-11):
 ### 11.4 Scoring metric default — RESOLVED
 
 **Decision.** `procrustes_distance` is the default fitness. `frechet_distance` is the stroke-order tiebreaker. `chamfer_distance` is the sampling-robustness tiebreaker.
+
+## 12. Security
+
+Applies the global `<security>` standard (`~/.claude/CLAUDE.md` §19). The full tool wiring and the per-boundary injection table live in `CLAUDE.md` §13A `<security>`; this section records the architectural decisions.
+
+### 12.1 SAST as a pipeline stage
+
+**Decision.** `.github/workflows/ci.yml` carries a `sast` job between `lint` and `test` for every phase, failing on any HIGH/CRITICAL finding; MEDIUM findings are triaged with a written justification. The gate is retroactive: Phase 1 established CI without it, so wiring it is the outstanding Phase 1 CI task and a precondition for every later phase gate.
+
+**Tool set.** Semgrep (`p/default`, `p/owasp-top-ten`, `p/python`, `p/typescript`, `p/react`, `p/docker`) and CodeQL (`python`, `javascript-typescript`) with SARIF upload to GitHub code scanning; ruff `S` rules in the existing `lint` job; `eslint-plugin-security` + `eslint-plugin-no-unsanitized` in the existing `frontend` job; `pip-audit` and `npm audit --audit-level=high` for dependencies; gitleaks for secrets; Trivy (`HIGH,CRITICAL`, exit-code 1) against both images in `docker-build`. Local parity command set is in `CLAUDE.md` §12.
+
+**Task (Phase 1 CI, outstanding).** Wire `sast` stage (Semgrep + CodeQL + pip-audit + gitleaks; Trivy in docker-build), add `"S"` to the ruff select, add the two ESLint plugins, add CSP/security headers to `frontend/nginx.conf`. Lands as one change with its own `docs/versions.md` entry.
+
+### 12.2 Injection-safety principles per component
+
+| Component | Untrusted input | Principle |
+|-----------|-----------------|-----------|
+| `POST /api/datasets/audio` (Phase 1) | `.m4a` bytes + form fields | Allowlisted `letter` / `accent` / `pronunciation_variant` select the storage directory; file name is server-generated; MIME and byte-size caps precede the write; ffmpeg decode is the parser surface and is covered by Trivy on the image. |
+| `POST /api/datasets/glyphs`, dataset list endpoints (Phase 1) | query params | Allowlisted against `constants`; SQLAlchemy bound parameters only; `limit` capped. |
+| `/api/experiments`, `/api/inference` (Phase 2) | Pydantic request bodies, DB-sourced paths | `Literal` vocabularies and the `FAMILY_REGISTRY` allowlist select behaviour; file paths from rows resolve under `audio_dir` / `contours_dir`; non-finite geometry rejected before serialization. |
+| `TransformCandidate.expression` (Phase 3) | stored expression strings, PySR output | Evaluated only through the `ast`-walking allowlist in `symbolic_expression.py`; never `eval` / `sympify`. |
+| `/ws/live` + browser client (Phase 4) | MessagePack frames, microphone PCM, backend error strings | Typed unpack with explicit error set, UUID / `Literal` allowlists, server-owned frame and rate limits; React text-node rendering only, CSP and security headers in `nginx.conf`. |
+| `backend/scripts/*` (Phases 2-5) | argv, manifests, JSONL ledgers, evidence JSON | `argparse`-typed args; JSON validated through `src/models/` Pydantic models; paths resolved and base-checked before I/O. |
+
+Out of scope today and to be inventoried before introduction: outbound HTTP, templating, authentication, LLM/agent tool execution.
+

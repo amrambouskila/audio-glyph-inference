@@ -284,10 +284,11 @@ If the user reports the launcher looks different from `llm-knowledge-base`'s, ch
 GitHub Actions at `.github/workflows/` — `ci.yml` (push/PR to `main`/`staging`/`dev`) and `release.yml` (manual). `ci.yml` jobs, in order:
 
 1. **`lint`** — `ruff check .` and `ruff format --check .` inside `backend/`
-2. **`test`** — `pytest --cov` with the 100% gate enforced in `backend/pyproject.toml` (`--cov-fail-under=100`)
-3. **`build`** — `uv build` sdist + wheel
-4. **`docker-build`** — `docker build` against `backend/Dockerfile` to verify the container still builds (`main`/`staging` only)
-5. **`release`** (`release.yml`) — manual `workflow_dispatch`, uses `uv version --bump` to bump `backend/pyproject.toml`'s version, then commits + tags + pushes
+2. **`sast`** — CodeQL (`python,javascript-typescript`) + Semgrep (SARIF upload + fail-on-findings step) + gitleaks + `uv run pip-audit`; fails on HIGH/CRITICAL. `needs: lint`; `test` and `frontend` carry `needs: sast`. Required by §13A.
+3. **`test`** — `pytest --cov` with the 100% gate enforced in `backend/pyproject.toml` (`--cov-fail-under=100`)
+4. **`build`** — `uv build` sdist + wheel
+5. **`docker-build`** — builds both `backend/Dockerfile` and `frontend/Dockerfile` with `load: true` as `audio-glyph-inference-backend:ci` / `-frontend:ci` to verify the containers still build (PRs plus `main`/`staging`); Trivy `HIGH,CRITICAL` `exit-code: 1` `ignore-unfixed` scan of both images (§13A)
+6. **`release`** (`release.yml`) — manual `workflow_dispatch`, uses `uv version --bump` to bump `backend/pyproject.toml`'s version, then commits + tags + pushes
 
 **Coverage gate is 100%.** When coverage drops, the `test` job fails and `build` is automatically blocked. Fix by adding tests — never by lowering the threshold. `pragma: no cover` is allowed sparingly on genuinely untestable lines (`if __name__ == "__main__":`, platform-specific branches, `raise NotImplementedError` in Phase 1 stubs).
 
@@ -605,6 +606,11 @@ uv run ruff format .
 
 # Build (sdist + wheel)
 uv build
+
+# SAST (same set the `sast` job runs — see §13A)
+uv run semgrep scan --config auto --error .
+uv run pip-audit
+gitleaks detect --no-git --redact
 ```
 
 Postgres and Redis must be running elsewhere when testing without Docker; point `BACKEND_DATABASE_URL` and `BACKEND_REDIS_URL` at them.
@@ -652,6 +658,72 @@ Testing is **mandatory** and enforced in CI. `backend/tests/` mirrors `backend/s
 - `@pytest.mark.parametrize` with `list("אבגדה...")` — this works in Python 3 because strings are iterables of single characters, but be intentional about it.
 
 </testing>
+
+---
+
+<security>
+
+## 13A. Security — SAST Scanning & Injection Safety
+
+Project application of global `~/.codex/AGENTS.md` §19 `<security>`. The global section defines the fleet rule; this section names what it means in this repo.
+
+### SAST scanning (non-negotiable)
+
+`.github/workflows/ci.yml` MUST carry a `sast` job positioned between `lint` and `test` (`needs: lint`; `test` and `frontend` gain `needs: sast`) that fails on any HIGH/CRITICAL finding. MEDIUM findings are triaged: fixed, or suppressed inline with a written justification. Soft gates (`continue-on-error: true`) are non-compliant. **Wired** — the job exists with `permissions: { contents: read, security-events: write, actions: read }`, and the `pyproject.toml` / `eslint.config.js` rule additions below landed with it.
+
+Tool set for this repo (Python 3.11+ backend + React/TS frontend, public GitHub project):
+
+| Layer | Tool | Where | Scope |
+|-------|------|-------|-------|
+| Code SAST | Semgrep — wired as `semgrep scan --config auto --config p/owasp-top-ten --config p/python --config p/typescript --config p/react --config p/docker --severity ERROR --error --sarif` | `sast` job; SARIF uploaded via `github/codeql-action/upload-sarif` (category `semgrep`, `if: !cancelled()`), then a `Fail on Semgrep findings` step hard-fails the job | `backend/src/`, `backend/scripts/`, `frontend/src/`, both Dockerfiles |
+| Code SAST | CodeQL — wired: `github/codeql-action` init → autobuild → analyze, `languages: python,javascript-typescript` | `sast` job | same |
+| Python lint-time security | ruff `S` family — wired: `backend/pyproject.toml` `[tool.ruff.lint] select` is `["E", "F", "I", "N", "UP", "ANN", "S"]` with `per-file-ignores` `"tests/**" = ["ANN", "S101"]` | existing `lint` job | `backend/` |
+| TS lint-time security | wired: `frontend/eslint.config.js` extends `security.configs.recommended` + `noUnsanitized.configs.recommended` (both plugins are `devDependencies`) | existing `frontend` job (`npm run lint`) | `frontend/src/` |
+| Dependency audit | wired: `uv run pip-audit` in the `sast` job (backend); `npm audit --audit-level=moderate` in the `frontend` job — stricter than the required `high`; do not loosen it | `sast` job / `frontend` job | lockfiles |
+| Secrets | wired: `gitleaks/gitleaks-action@v2` on a `fetch-depth: 0` checkout (`gitleaks detect --no-git --redact` locally) | `sast` job | whole tree |
+| Container | wired: `aquasecurity/trivy-action@0.28.0`, `severity: HIGH,CRITICAL`, `exit-code: "1"`, `ignore-unfixed: true`, against both freshly built images (`load: true`) | existing `docker-build` job | `backend/Dockerfile`, `frontend/Dockerfile` |
+
+Grant `security-events: write` at job level for every SARIF upload. Project-specific Semgrep rules, when needed, live in `.semgrep/` at the repo root (does not exist yet; create it only with a real rule).
+
+Local reproduction (also listed in §12):
+
+```bash
+cd backend && uv run semgrep scan --config auto --error . && uv run pip-audit && cd ..
+cd frontend && npm audit --audit-level=high && npm run lint && cd ..
+gitleaks detect --no-git --redact
+```
+
+### Injection safety — input boundary inventory
+
+Every boundary below is the only place its input enters the process. Defenses listed are what the code does today or must do before the boundary is touched again; a change to any boundary re-verifies its row.
+
+| Boundary | Entry point | Injection classes | Required defense in this codebase |
+|----------|-------------|-------------------|-----------------------------------|
+| Audio upload | `POST /api/datasets/audio` (`src/api/routers/datasets.py:upload_audio`) — multipart `.m4a` + form fields | Path traversal, resource exhaustion, unsafe media parsing, SQL | `letter` / `accent` / `pronunciation_variant` validated against `constants` allowlists before any path is built; on-disk path is `settings.audio_dir / accent / letter / variant / <server-generated timestamp-rep name>.m4a` — the client filename is never used; `file.content_type` checked against `ACCEPTED_AUDIO_MIME_TYPES`; byte length capped by `settings.audio_max_upload_bytes` before write; `AudioPreprocessor.load` enforces `audio_duration_max_s` and unlinks the file on `AudioValidationError`; persistence via SQLAlchemy ORM rows only. The decode path (`librosa` → `audioread` → ffmpeg invoked with a path argument, never a shell string) is the parser attack surface — ffmpeg/libsndfile CVEs are caught by Trivy on the backend image. |
+| Glyph render | `POST /api/datasets/glyphs` (`letter`, `glyph_form` query params) | Path traversal, SQL | Both params validated against `HEBREW_LETTERS` / `GLYPH_FORMS` / `BASE_LETTER_BY_GLYPH_FORM` before `contours_dir / f"{glyph_form}.npz"` is formed; font path is `settings.font_file`, never input. |
+| Dataset queries | `GET /api/datasets/glyphs`, `GET /api/datasets/pairs`, `POST /api/datasets/pairs` | SQL, resource exhaustion | Filters are Pydantic/`Query`-typed and compared with SQLAlchemy bound expressions; no `text()`; list endpoints stay paginated with `limit: Query(ge=1, le=500)`. Table/column names never come from input. |
+| Experiments | `POST /api/experiments`, `GET /api/experiments[/{run_id}]` (`src/api/routers/experiments.py`) | SQL, resource exhaustion, path traversal (JSONL ledger) | `ExperimentCreate` is a Pydantic model with `Literal` vocabularies for `search_strategy` / `scoring_metric`; `family` resolved through `build_family` (`FAMILY_REGISTRY` allowlist, `ValueError` → 422); `max_evaluations` is the compute budget and stays bounded by config; the tracker ledger path is `experiments_dir / f"{run_id}.jsonl"` from a server-generated UUID; `run_id` path params are typed `UUID`. |
+| One-shot inference | `POST /api/inference` (`src/api/routers/inference.py`) | SQL, path traversal (paths read from DB rows), resource exhaustion | `InferenceRequest` Pydantic model; `audio.file_path` / `glyph.contour_path` come from rows this service wrote and must stay resolved under `settings.audio_dir` / `settings.contours_dir`; `validate_score_geometry` rejects non-finite output before serialization. |
+| Live WebSocket | `WS /ws/live` (`src/api/routers/live.py`) — MessagePack binary frames | Unsafe deserialization, resource exhaustion, SQL | Text frames rejected; `msgpack.unpackb(raw=False, strict_map_key=False)` inside an explicit exception set; top-level must be a str-keyed map; `candidate_id` / `glyph_target_id` parsed as `UUID`; `metric` through `_metric_field`'s `Literal` allowlist; family through `build_family`; per-frame PCM length and per-session rate bounded by config, not by the client; errors returned as structured binary `{type: "error"}` frames, never raw tracebacks. |
+| Symbolic expressions | `TransformCandidate.expression` (DB) → `simulation/symbolic_expression.py:evaluate_symbolic_expression` | Code injection via stored expression | Never `eval` / `exec` / `sympify`. The evaluator walks `ast.parse(mode="eval")` and accepts only the allowlisted node types, operators, and function names in that module. Adding a node type or function is a security change and requires a test that rejected constructs (`__import__`, attribute access, subscripts, lambdas) raise. |
+| Frontend live UI | `frontend/src/App.tsx` — `VITE_API_BASE_URL`, `VITE_WS_URL`, backend JSON/MessagePack responses, backend `error.message` strings | XSS, CSP, unsafe deserialization | React default escaping only — `dangerouslySetInnerHTML` banned by ESLint; backend error strings rendered as text nodes; MessagePack responses validated by the type guards in `src/utils/` before entering Zustand/R3F; `frontend/nginx.conf` MUST add `Content-Security-Policy` (`default-src 'self'`; `connect-src 'self' <backend origin> <ws origin>`; no `unsafe-inline` scripts), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`. These headers are not present yet. |
+| Microphone | `getUserMedia` → `AudioContext` → PCM16 frames | Resource exhaustion (outbound) | Sample rate from `VITE_AUDIO_SAMPLE_RATE_HZ`, validated before `AudioContext` creation; fixed frame size; frames encoded through the same validated MessagePack schema. |
+| CLI scripts | `backend/scripts/{seed_live_smoke,smoke_live_roundtrip,audit_stage7_dataset,render_phase5_report,generate_live_loop_evidence_template,feasibility_probe}.py` — argv, manifest JSON, JSONL ledgers, evidence JSON | Path traversal, unsafe deserialization, log injection | argv parsed with `argparse` into typed values; manifest/evidence JSON decoded with `json` and validated through the Pydantic models in `src/models/` before use; ledgers opened read-only where the script is read-only; path arguments resolved with `Path(...).resolve()` and checked `is_relative_to` the intended base before read/write; no `subprocess`. |
+| Environment | `BackendSettings` (`src/config.py`) from `BACKEND_*`, `POSTGRES_*`, `REDIS_*`; frontend `VITE_*` | Secrets, SSRF (DB/Redis URLs) | Pydantic-settings typed fields with defaults; `BACKEND_DATABASE_URL` / `BACKEND_REDIS_URL` are operator-controlled, never request-controlled; credentials only in `.env` (gitignored, write-blocked by the PreToolUse hook) and CI variables. |
+| Database rows | Postgres rows read back via `model_validate(from_attributes=True)` | Second-order injection (paths, expression strings) | Rows are written only by this service, but `file_path` / `contour_path` / `expression` are re-validated by their consumers as described above — the consumer of the field is the trust boundary, not the row. |
+
+Not applicable in this repo, and to be added to this table before introduction: outbound HTTP (`httpx` is a test dependency only — no SSRF surface today), templating (no Jinja2), authentication (no accounts; Phase 4 explicitly excludes them), LLM calls or agent tool execution (none in the runtime; PySR proposes expressions in-process under the `[symbolic]` extra and its output passes through the AST allowlist above).
+
+### Project-specific additions
+
+- **Media decoding is the largest parser surface.** `.m4a` decoding runs through ffmpeg (system package in the backend Dockerfile and CI). Keep the pinned base image current; a Trivy HIGH/CRITICAL on `ffmpeg` / `libsndfile` / `libgl1` fails `docker-build` and is fixed by a rebuild, not a suppression.
+- **Stored expressions are code-shaped data.** `TransformCandidate.expression` and anything PySR returns is evaluated only through `evaluate_symbolic_expression`'s AST allowlist. Any new family that consumes a string parameter follows the same pattern.
+- **Binary protocol limits are server-owned.** `/ws/live` frame size, frames per second, and `max_evaluations` bounds come from `BackendSettings`, never from the client payload.
+- **Research artifacts are inputs too.** Manifests, JSONL ledgers, and browser evidence JSON consumed by the Phase 5 renderer are validated by Pydantic models before any value reaches a report or a path.
+
+The self-audit in §18 includes a **Security check** item; §16 carries the SAST and boundary gate lines.
+
+</security>
 
 ---
 
@@ -722,7 +794,9 @@ Phase 1 is done when:
 - [ ] `docker compose up --build -d` brings up postgres + redis + backend with all healthchecks green
 - [ ] `run_audio_glyph_inference.{sh,bat}` launchers work end to end with the `[k]/[q]/[v]/[r]` loop
 - [ ] `.env` has all Phase 1 variables with documented defaults
-- [ ] GitHub Actions (`.github/workflows/ci.yml`) runs lint → test → coverage gate (100%) → build → docker-build green
+- [ ] GitHub Actions (`.github/workflows/ci.yml`) runs lint → sast → test → coverage gate (100%) → build → docker-build green
+- [ ] SAST green with zero HIGH/CRITICAL findings (Semgrep, CodeQL, pip-audit, gitleaks, Trivy)
+- [ ] All input boundaries injection-safe and documented in §13A `<security>`
 - [ ] `backend/tests/` has a matching test file for every implemented module
 - [ ] All `docs/` files are current (status, versions, run_guide, dependencies, phase-1-plan)
 
@@ -768,7 +842,8 @@ When you finish a non-trivial task, your final response MUST include a self-audi
 8. **Docs check** — list every `docs/` file updated (status.md at minimum for non-trivial work; versions.md if it's a landable change).
 9. **Test check** — list tests added/changed. State current coverage if available.
 10. **Phase-scope check** — confirm the change lands inside the current phase's scope.
-11. **Git state** — list files changed. **Suggest** a commit message (subject + body). Do NOT run any mutating git command — see §19.
+11. **Security check** — local SAST clean; every touched input boundary names its injection class(es) and defense; §13A `<security>` updated if a boundary was added.
+12. **Git state** — list files changed. **Suggest** a commit message (subject + body). Do NOT run any mutating git command — see §19.
 
 If any item fails, say so explicitly. Do not paper over a failure.
 

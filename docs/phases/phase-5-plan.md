@@ -22,3 +22,5 @@
 
 - A reader who has never seen the repo can reproduce every figure by reading `docs/writeup.md` and running one manifest.
 - `docs/status.md` marks the project as "Phase 5 complete - maintenance mode".
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification.
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`.

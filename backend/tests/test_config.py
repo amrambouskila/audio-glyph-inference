@@ -24,7 +24,7 @@ def test_defaults_match_master_plan(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_backend_env(monkeypatch)
     settings = BackendSettings()
 
-    assert settings.host == "0.0.0.0"
+    assert settings.host == "0.0.0.0"  # noqa: S104 -- asserting the documented container default
     assert settings.port == 8000
     assert settings.log_level == "info"
     assert settings.database_url.startswith("postgresql+asyncpg://")

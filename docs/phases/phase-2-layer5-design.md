@@ -30,7 +30,7 @@ uv run --no-project --python 3.11 \
   --cov-report=term-missing --cov-fail-under=100 -q
 ```
 
-Full CI (lint â†’ 100%-gated test â†’ build â†’ docker-build) runs on push; the torch-heavy env isn't synced locally.
+Full CI (lint → sast → 100%-gated test → build → docker-build) runs on push; the torch-heavy env isn't synced locally.
 
 ---
 

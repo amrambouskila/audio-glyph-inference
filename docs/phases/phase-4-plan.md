@@ -27,4 +27,6 @@
 
 - Full round-trip works for all 27 glyph forms
 - Render rate ≥10 Hz end-to-end
-- CI green (frontend: lint, unit test, browser smoke, build, docker-build)
+- CI green (lint, sast, test; frontend: lint, unit test, browser smoke, build, docker-build)
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`

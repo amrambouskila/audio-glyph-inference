@@ -55,6 +55,8 @@ async def test_smoke_live_roundtrip_selects_latest_candidate_and_all_glyphs(
         settings: BackendSettings,
         pcm16: bytes,
     ) -> smoke.LiveSmokeResult:
+        # Test fixture URL, never dialled: the smoke helper is driven against a stub here.
+        # nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
         assert websocket_url == "ws://test/ws/live"
         expected_samples = (
             settings.audio_frame_length_samples + (settings.feature_n_segments - 1) * settings.audio_hop_length_samples
@@ -73,6 +75,8 @@ async def test_smoke_live_roundtrip_selects_latest_candidate_and_all_glyphs(
 
     monkeypatch.setattr(smoke, "_roundtrip_glyph", fake_roundtrip_glyph)
 
+    # Test fixture URL, never dialled: the smoke helper is driven against a stub here.
+    # nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
     results = await smoke.smoke_live_roundtrip(db_session, settings, "ws://test/ws/live", None)
 
     assert len(results) == NUM_GLYPH_FORMS
@@ -143,6 +147,8 @@ def test_main_prints_summary(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Cap
         websocket_url: str,
         candidate_id,
     ) -> list[smoke.LiveSmokeResult]:
+        # Test fixture URL, never dialled: the smoke helper is driven against a stub here.
+        # nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
         assert websocket_url == "ws://test/ws/live"
         return [
             smoke.LiveSmokeResult(
@@ -157,6 +163,8 @@ def test_main_prints_summary(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Cap
 
     monkeypatch.setattr(smoke, "_smoke_with_own_session", fake_smoke_with_own_session)
 
+    # Test fixture URL, never dialled: the smoke helper is driven against a stub here.
+    # nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
     result = smoke.main(["--websocket-url", "ws://test/ws/live", "--font-file", str(FONT_PATH)])
 
     assert result == 0

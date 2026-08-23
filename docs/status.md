@@ -114,6 +114,20 @@
 
 - **Next:** Follow `docs/completion-audit.md`: Phase-4 live round-trip user testing with real saved candidates/glyph targets, plus real-data calibration / exit-gate execution when Stage-7 recordings exist. The feasibility-probe verdict, Phase-2/3 exit-gate reports, and final Phase-5 results tables still await Stage-7 real recordings.
 
+## Security
+
+Security requirements are documented **and enforced**. `CLAUDE.md` / `AGENTS.md` §13A `<security>` holds the SAST tool set and the input-boundary inventory (every entry point, its injection classes, and the defense the code implements or must implement); the master plan carries a Security section and per-phase SAST gate lines; `.codex/commands/pre-commit.md` audits SAST locally.
+
+Wired:
+
+- `sast` job in `.github/workflows/ci.yml` (`needs: lint`; `test` and `frontend` carry `needs: sast`) with `permissions: { contents: read, security-events: write, actions: read }`: CodeQL `python,javascript-typescript`, `pipx run semgrep scan` (SARIF upload + a `Fail on Semgrep findings` step), `gitleaks/gitleaks-action@v2`, and `uv run pip-audit`.
+- ruff `S` family in `backend/pyproject.toml` (`select = ["E", "F", "I", "N", "UP", "ANN", "S"]`; `"tests/**" = ["ANN", "S101"]`).
+- `eslint-plugin-security` + `eslint-plugin-no-unsanitized` in `frontend/eslint.config.js`, plus a `sast` npm script for local parity.
+- Trivy `HIGH,CRITICAL` / `exit-code: "1"` / `ignore-unfixed` scan of both images in `docker-build`, which now builds each with `load: true`.
+- `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options: DENY`, and `Referrer-Policy` headers in `frontend/nginx.conf`.
+
+Still pending: a `.semgrep/` project-rules directory.
+
 ## What's next (per the 2026-06-03 audit plan)
 
 **Read `docs/recording_protocol.md` before touching the ingestion code** â€” it locks duration, loudness, articulation, on-disk layout, and server validation.

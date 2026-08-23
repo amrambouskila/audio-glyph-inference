@@ -27,7 +27,7 @@ class BackendSettings(BaseSettings):
         extra="ignore",
     )
 
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # noqa: S104 -- uvicorn must bind all interfaces inside the container; compose publishes the port
     port: int = 8000
     log_level: str = "info"
 

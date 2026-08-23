@@ -43,14 +43,18 @@ jobs:
       - name: Bump pyproject.toml
         id: bump
         working-directory: backend
+        env:
+          BUMP: ${{ inputs.bump }}
         run: |
-          uv version --bump "${{ inputs.bump }}"
+          uv version --bump "$BUMP"
           new_version=$(uv version --short)
           echo "new_version=v${new_version}" >> "$GITHUB_OUTPUT"
 
       - name: Commit + tag
+        env:
+          NEW_VERSION: ${{ steps.bump.outputs.new_version }}
         run: |
-          version="${{ steps.bump.outputs.new_version }}"
+          version="$NEW_VERSION"
           git add backend/pyproject.toml
           if [ -f backend/uv.lock ]; then
             git add backend/uv.lock
