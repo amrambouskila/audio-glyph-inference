@@ -12,6 +12,11 @@ ENV VITE_AUDIO_SAMPLE_RATE_HZ=$VITE_AUDIO_SAMPLE_RATE_HZ
 RUN npm run build
 
 FROM nginx:1.27-alpine
+
+# Base-image security patches. The alpine bases currently ship libcrypto3/libssl3 3.5.7-r0,
+# which Trivy flags HIGH (CVE-2026-14456, OpenSSL QUIC-server DoS, fixed in 3.5.8-r0). These
+# come from the base layer, so this is required even though nothing below installs them.
+RUN apk upgrade --no-cache
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

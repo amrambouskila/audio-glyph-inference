@@ -8,6 +8,26 @@ Pre-alpha convention: this project stays on `0.0.x` until the Phase 1 data pipel
 
 ## v0.2.1 — 2026-08-24 (unreleased)
 
+### Base-image security patch for the alpine runtime stage (2026-08-26)
+
+- **`RUN apk upgrade --no-cache` added to `frontend/Dockerfile`.** The `nginx:1.27-alpine` base currently ships
+  `libcrypto3`/`libssl3` 3.5.7-r0, which Trivy flags HIGH (`CVE-2026-14456`, an OpenSSL QUIC-server
+  DoS, fixed in 3.5.8-r0). The packages come from the base layer, so nothing in the Dockerfile
+  installs them and nothing below can remediate them -- the upgrade has to happen at build time.
+  Measured directly against the base image: **2 HIGH before the layer, 0 after**.
+- **Why this needed a change at all.** `nginx:alpine` measured clean during the 2026-08-24
+  base-image sweep. The advisory landed afterwards. A base image being clean is a point-in-time
+  observation, not a property, which is precisely why the patch layer belongs in the Dockerfile
+  rather than being skipped on the strength of a past scan. This is the alpine counterpart to the
+  `apt-get upgrade` layer the Debian bases already carry.
+- **Not gated by CI here.** This repo's pipeline has no `trivy image` step, so the layer is
+  preventive hardening rather than a fix for a failing stage. The base-image measurement
+  above is what supports it; no image scan is claimed for this repo.
+
+**Semver reasoning:** Patch. A build-time base-image security patch. No application code,
+dependency, host port, API or data contract, and no test changed.
+
+
 ### CI hardening + dependency remediation (2026-08-24)
 
 - **Semgrep invocation corrected.** The job used `semgrep ci` with `--severity` and `--error`, which that subcommand does not accept — it exits 2 with a usage error before scanning. Switched to `semgrep scan`, which supports both.

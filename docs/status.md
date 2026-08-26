@@ -116,6 +116,15 @@
 
 ## Security
 
+### Verified state (2026-08-26)
+
+- **Alpine base-image CVEs patched at build time.** `CVE-2026-14456` (`libcrypto3`/`libssl3`
+  3.5.7-r0, HIGH, fixed 3.5.8-r0) is cleared by an `apk upgrade` layer in the runtime stage --
+  measured on the base image as 2 HIGH before, 0 after. The base scanned clean two days earlier,
+  so the layer exists to stop a future advisory from becoming a pipeline failure.
+- **No image scan runs in this repo's CI**, so nothing here was gating; the change is
+  preventive and no per-image scan result is claimed.
+
 ### Verified state (2026-08-24)
 
 - **Semgrep: clean.** Verified locally by running this repo's own CI command against the working tree (0 findings). The invocation itself was broken before today — `semgrep ci` rejects `--severity`/`--error` and exited 2 without scanning.
