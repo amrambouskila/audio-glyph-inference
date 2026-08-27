@@ -30,6 +30,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# The base image's system setuptools (79.0.1) vendors jaraco.context 5.3.0 and wheel
+# 0.45.1, which Trivy flags HIGH (CVE-2026-23949, CVE-2026-24049). They live under
+# /usr/local as a pip distribution, so the apt-get upgrade layer above cannot reach them.
+# setuptools 84 vendors the fixed jaraco_context 6.1.0 and wheel 0.46.3.
+RUN python -m pip install --no-cache-dir --upgrade 'setuptools>=84.0.0'
+
 # Install uv.
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
     && mv /root/.local/bin/uv /usr/local/bin/uv \

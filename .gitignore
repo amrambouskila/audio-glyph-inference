@@ -75,3 +75,7 @@ mlruns/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# CI-generated reports (JUnit XML, exported audit requirements)
+junit-*.xml
+requirements-audit.txt

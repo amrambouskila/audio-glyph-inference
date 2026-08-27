@@ -11,11 +11,11 @@ dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.27.0",
     "websockets>=12.0",
-    "python-multipart>=0.0.9",
+    "python-multipart>=0.0.31",
 
     # --- Data validation / schemas (Pydantic v2) ---
     "pydantic>=2.6.0",
-    "pydantic-settings>=2.2.0",
+    "pydantic-settings>=2.14.2",
 
     # --- Database (SQLAlchemy 2.0 async + asyncpg) ---
     "sqlalchemy[asyncio]>=2.0.27",
@@ -46,10 +46,12 @@ dependencies = [
     "opencv-python-headless>=4.9.0",
     "shapely>=2.0.3",
     "freetype-py>=2.4.0",
-    "pillow>=10.2.0",
+    "pillow>=12.3.0",
 
     # --- Deep learning (PyTorch per global CLAUDE.md) ---
-    "torch>=2.2.0",
+    # 2.13.0 floor: torch 2.12 and below cap `setuptools` below 83.0.0, which pins the
+    # transitive setuptools onto a version pip-audit fails on (PYSEC-2026-3447).
+    "torch>=2.13.0",
     "torchaudio>=2.2.0",
 
     # --- Static visualization (Seaborn + matplotlib per global CLAUDE.md) ---
@@ -61,7 +63,7 @@ dependencies = [
     "rich>=13.7.0",
 
     # --- Binary serialization for WebSocket payloads ---
-    "msgpack>=1.0.7",
+    "msgpack>=1.2.1",
 
     # --- HTTP client (httpx.AsyncClient for FastAPI integration tests) ---
     "httpx>=0.27.0",

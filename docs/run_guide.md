@@ -41,8 +41,7 @@ Overridable via `.env` at the project root (copy `.env.example` and edit). Defau
 
 ```bash
 cd backend
-uv venv
-uv pip install -e '.[dev]'
+uv sync --locked   # installs exactly uv.lock (project + dev group)
 uv run uvicorn src.api.main:app --reload --port 8220
 ```
 
@@ -139,7 +138,8 @@ Local SAST reproduction (mirrors the `sast` CI stage specified in `CLAUDE.md` §
 ```bash
 cd backend
 uv run semgrep scan --config auto --error .
-uv run pip-audit
+uv export --frozen --no-emit-project --no-hashes --all-groups --all-extras --no-emit-package torch --no-emit-package torchaudio -o requirements-audit.txt
+uvx pip-audit --requirement requirements-audit.txt --no-deps
 
 cd ../frontend
 npm audit --audit-level=high

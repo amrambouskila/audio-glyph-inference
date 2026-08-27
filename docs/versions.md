@@ -8,6 +8,86 @@ Pre-alpha convention: this project stays on `0.0.x` until the Phase 1 data pipel
 
 ## v0.2.1 — 2026-08-24 (unreleased)
 
+### CI green-up: dependency-audit remediation + two gate fixes (2026-08-27)
+
+The `sast` job was failing on **Backend dependency audit**: `pip-audit` found **42 advisories across 10
+packages** in the environment synced from `backend/uv.lock` (last resolved 2026-08-24). Three CI stages were
+red or would have gone red; all three are now verified green locally.
+
+**Dependency remediation — `backend/uv.lock`.** Targeted `uv lock --upgrade-package` for exactly the flagged
+packages, deliberately *not* a blanket `uv lock --upgrade` (which would also have pulled librosa 1.0.0,
+opencv 5.0, redis 8.1, ruff 0.16 and pytest 9.1 into a project gated on 100% coverage of numerical code):
+
+| Package | From | To | Advisories cleared |
+|---------|------|----|--------------------|
+| `click` | 8.3.2 | 8.5.0 | PYSEC-2026-2132 |
+| `idna` | 3.11 | 3.19 | PYSEC-2026-215 |
+| `mako` | 1.3.11 | 1.4.1 | PYSEC-2026-2617 |
+| `msgpack` | 1.1.2 | 1.2.2 | PYSEC-2026-3625 |
+| `pillow` | 12.2.0 | 12.3.0 | 13 advisories (PYSEC-2026-2253..3496) |
+| `pydantic-settings` | 2.13.1 | 2.15.0 | GHSA-4xgf-cpjx-pc3j |
+| `python-multipart` | 0.0.26 | 0.0.32 | PYSEC-2026-3036/3037/3039/3040 |
+| `setuptools` | 81.0.0 | 84.0.0 | PYSEC-2026-3447 |
+| `starlette` | 1.0.0 | 1.6.0 | PYSEC-2026-161/248/249/2280/2281 |
+| `urllib3` | 2.6.3 | 2.7.0 | PYSEC-2026-141/142 |
+| `torch` | 2.12.0 | 2.13.0 | (transitively required — see below) |
+
+`torch` had to move because **torch 2.12 and below cap `setuptools` below 83.0.0**, pinning it onto
+PYSEC-2026-3447; `--upgrade-package setuptools` alone was a no-op until torch moved. `torch` and `torchaudio`
+are declared but imported nowhere in `src/`, `tests/`, or `scripts/`, so the bump is resolution-only.
+`torchaudio` stays at `>=2.2.0`: 2.11.0 is the newest build published on `download.pytorch.org/whl/cpu` and it
+declares no `torch` pin. Five direct-dependency floors were raised alongside the lock so that the Dockerfile's
+independent `uv pip compile` resolve cannot land on a vulnerable version either.
+
+**CI install correctness — `.github/workflows/ci.yml`.** `uv pip install -e '.[dev]'` was wrong in all three
+jobs: `dev` is a PEP 735 dependency-group, not an extra. uv warned `does not have an extra named 'dev'`,
+installed 99 packages, and the next `uv run` re-synced them away. Replaced with `uv sync --locked`, which
+installs exactly the lock and fails loudly if the lock is stale. **`backend/uv.lock` is now CI-load-bearing:
+any `backend/pyproject.toml` edit must be followed by `uv lock`, both committed together.** Verified that
+`release.yml`'s `uv version --bump` already keeps the lock in sync, so the release path is unaffected.
+
+**Audit determinism — same file.** The audit only ran at all because `pip-audit` happened to survive
+`uv run`'s re-sync. It now audits the exported lock directly:
+`uv export --frozen --no-emit-project --no-hashes --all-groups --all-extras --no-emit-package torch
+--no-emit-package torchaudio` into `uvx pip-audit --requirement ... --no-deps`. `--all-extras` *widens*
+coverage over the previous environment audit (the `symbolic` extra — pysr, sympy, juliacall, juliapkg, semver,
+tomlkit — was never installed and so was never audited). The `--no-emit-package` exclusions are mandatory, not
+cosmetic: `pip-audit --requirement` runs a pip resolve before auditing anything, and `torch==2.13.0+cpu` exists
+only on the PyTorch index, so leaving it in makes the step exit 1 before producing a report. The resulting
+audit blind spots are documented in `CLAUDE.md` §13A.
+
+**`docker-build` would have failed next — `backend/Dockerfile`.** Trivy flagged 2 HIGH in the backend image:
+`CVE-2026-23949` (jaraco.context 5.3.0) and `CVE-2026-24049` (wheel 0.45.1), both vendored inside the
+`python:3.11-slim` base image's system setuptools 79.0.1 under `/usr/local`, where the existing `apt-get
+upgrade` layer cannot reach them. Added `RUN python -m pip install --no-cache-dir --upgrade 'setuptools>=84.0.0'`;
+setuptools 84 vendors the fixed `jaraco_context` 6.1.0 and `wheel` 0.46.3. Base-image drift, not caused by the
+dependency change.
+
+**`frontend` browser smoke was ~50% flaky — `frontend/playwright.config.ts`.** Measured 3 failures in 6
+cold-cache runs, every one `page.goto("/")` exceeding the default 30s per-test timeout while Vite pre-bundled
+`three`/`drei`/`chart.js`. Added a top-level `timeout: 180_000`. The worst cold run measured 35.1s locally, and
+pinning to 4 logical CPUs (ubuntu-latest's vCPU count) tripled per-test time, which projects ~105s on a cold
+runner — 120s was too tight a margin.
+
+**Verified locally, not asserted.** In linux/python3.11 containers matching ubuntu-latest: `uv sync --locked`
+succeeds; the audit exits 0 with "No known vulnerabilities found" across 106 packages; three independent
+injections of a known-vulnerable pin (`urllib3==2.6.3`, `starlette==1.0.0`, `pillow==12.2.0`) each exit 1 and
+name the advisory, proving the gate is not blind; ruff check + format are clean; pytest passes at the 100%
+coverage gate against a real Postgres 16; `uv build` produces sdist + wheel; semgrep and gitleaks are clean;
+`npm ci`/`npm audit --audit-level=moderate`/lint/vitest (47 tests, 100%)/build all pass; six consecutive
+cold-cache Playwright runs pass; and Trivy reports 0 HIGH/CRITICAL on both rebuilt images at the CI-exact
+`--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed` settings, against a pre-fix baseline that exits 1.
+
+**Docs:** `CLAUDE.md` / `AGENTS.md` §5, §12 and §13A (audit command, `uv sync --locked` install, audit blind
+spots), `docs/run_guide.md`, `docs/dependencies.md` (new "Version floors and the lock" section),
+`docs/status.md`, `.codex/commands/pre-commit.md`. `.gitignore` gains `junit-*.xml` and
+`requirements-audit.txt`.
+
+**Semver reasoning:** Patch, folded into the existing unreleased `v0.2.1` (one unreleased version at a time,
+per §14). Dependency upgrades, CI configuration, a Dockerfile security layer and a test-timeout change. No
+application code, API surface, data contract, host port or test expectation changed.
+
+
 ### Base-image security patch for the alpine runtime stage (2026-08-26)
 
 - **`RUN apk upgrade --no-cache` added to `frontend/Dockerfile`.** The `nginx:1.27-alpine` base currently ships

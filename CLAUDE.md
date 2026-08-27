@@ -284,7 +284,7 @@ If the user reports the launcher looks different from `llm-knowledge-base`'s, ch
 GitHub Actions at `.github/workflows/` — `ci.yml` (push/PR to `main`/`staging`/`dev`) and `release.yml` (manual). `ci.yml` jobs, in order:
 
 1. **`lint`** — `ruff check .` and `ruff format --check .` inside `backend/`
-2. **`sast`** — CodeQL (`python,javascript-typescript`) + Semgrep (SARIF upload + fail-on-findings step) + gitleaks + `uv run pip-audit`; fails on HIGH/CRITICAL. `needs: lint`; `test` and `frontend` carry `needs: sast`. Required by §13A.
+2. **`sast`** — CodeQL (`python,javascript-typescript`) + Semgrep (SARIF upload + fail-on-findings step) + gitleaks + `uvx pip-audit` over the exported `uv.lock`; fails on HIGH/CRITICAL. `needs: lint`; `test` and `frontend` carry `needs: sast`. Required by §13A.
 3. **`test`** — `pytest --cov` with the 100% gate enforced in `backend/pyproject.toml` (`--cov-fail-under=100`)
 4. **`build`** — `uv build` sdist + wheel
 5. **`docker-build`** — builds both `backend/Dockerfile` and `frontend/Dockerfile` with `load: true` as `audio-glyph-inference-backend:ci` / `-frontend:ci` to verify the containers still build (PRs plus `main`/`staging`); Trivy `HIGH,CRITICAL` `exit-code: 1` `ignore-unfixed` scan of both images (§13A)
@@ -591,8 +591,7 @@ docker compose exec backend bash     # shell into the backend container
 
 ```bash
 cd backend
-uv venv
-uv pip install -e '.[dev]'
+uv sync --locked   # installs exactly uv.lock (project + dev group); CI does the same
 uv run uvicorn src.api.main:app --reload --port 8220
 
 # Tests
@@ -609,7 +608,8 @@ uv build
 
 # SAST (same set the `sast` job runs — see §13A)
 uv run semgrep scan --config auto --error .
-uv run pip-audit
+uv export --frozen --no-emit-project --no-hashes --all-groups --all-extras --no-emit-package torch --no-emit-package torchaudio -o requirements-audit.txt
+uvx pip-audit --requirement requirements-audit.txt --no-deps
 gitleaks detect --no-git --redact
 ```
 
@@ -679,7 +679,7 @@ Tool set for this repo (Python 3.11+ backend + React/TS frontend, public GitHub 
 | Code SAST | CodeQL — wired: `github/codeql-action` init → autobuild → analyze, `languages: python,javascript-typescript` | `sast` job | same |
 | Python lint-time security | ruff `S` family — wired: `backend/pyproject.toml` `[tool.ruff.lint] select` is `["E", "F", "I", "N", "UP", "ANN", "S"]` with `per-file-ignores` `"tests/**" = ["ANN", "S101"]` | existing `lint` job | `backend/` |
 | TS lint-time security | wired: `frontend/eslint.config.js` extends `security.configs.recommended` + `noUnsanitized.configs.recommended` (both plugins are `devDependencies`) | existing `frontend` job (`npm run lint`) | `frontend/src/` |
-| Dependency audit | wired: `uv run pip-audit` in the `sast` job (backend); `npm audit --audit-level=moderate` in the `frontend` job — stricter than the required `high`; do not loosen it | `sast` job / `frontend` job | lockfiles |
+| Dependency audit | wired: `uv export ... \| uvx pip-audit --requirement ... --no-deps` in the `sast` job (backend), auditing the exported `uv.lock` rather than whatever happens to be installed; `npm audit --audit-level=moderate` in the `frontend` job — stricter than the required `high`; do not loosen it | `sast` job / `frontend` job | lockfiles |
 | Secrets | wired: `gitleaks/gitleaks-action@v2` on a `fetch-depth: 0` checkout (`gitleaks detect --no-git --redact` locally) | `sast` job | whole tree |
 | Container | wired: `aquasecurity/trivy-action@0.28.0`, `severity: HIGH,CRITICAL`, `exit-code: "1"`, `ignore-unfixed: true`, against both freshly built images (`load: true`) | existing `docker-build` job | `backend/Dockerfile`, `frontend/Dockerfile` |
 
@@ -688,7 +688,10 @@ Grant `security-events: write` at job level for every SARIF upload. Project-spec
 Local reproduction (also listed in §12):
 
 ```bash
-cd backend && uv run semgrep scan --config auto --error . && uv run pip-audit && cd ..
+cd backend && uv run semgrep scan --config auto --error .
+uv export --frozen --no-emit-project --no-hashes --all-groups --all-extras --no-emit-package torch --no-emit-package torchaudio -o requirements-audit.txt
+uvx pip-audit --requirement requirements-audit.txt --no-deps
+cd ..
 cd frontend && npm audit --audit-level=high && npm run lint && cd ..
 gitleaks detect --no-git --redact
 ```
@@ -719,6 +722,14 @@ Not applicable in this repo, and to be added to this table before introduction: 
 - **Media decoding is the largest parser surface.** `.m4a` decoding runs through ffmpeg (system package in the backend Dockerfile and CI). Keep the pinned base image current; a Trivy HIGH/CRITICAL on `ffmpeg` / `libsndfile` / `libgl1` fails `docker-build` and is fixed by a rebuild, not a suppression.
 - **Stored expressions are code-shaped data.** `TransformCandidate.expression` and anything PySR returns is evaluated only through `evaluate_symbolic_expression`'s AST allowlist. Any new family that consumes a string parameter follows the same pattern.
 - **Binary protocol limits are server-owned.** `/ws/live` frame size, frames per second, and `max_evaluations` bounds come from `BackendSettings`, never from the client payload.
+- **The dependency audit has two known blind spots, both deliberate.** (1) `torch` / `torchaudio`
+  resolve to PyTorch-index local versions (`2.13.0+cpu`), which carry no PyPI advisory data — pip-audit
+  can only skip them, and including them in the audit input makes its pre-audit pip resolve fail outright,
+  so they are excluded with `--no-emit-package`. Torch CVEs are caught by the Trivy image scan in
+  `docker-build`, which sees the installed distribution. (2) `uv.lock` is a universal multi-platform
+  resolution, so pins whose environment markers are inactive on the linux runner (`colorama`, `pywin32`,
+  `audioop-lts`, the `standard-*` backports, `async-timeout`) are never scanned. Neither ships in the
+  linux backend image. Re-check both if the audit input or the torch source ever changes.
 - **Research artifacts are inputs too.** Manifests, JSONL ledgers, and browser evidence JSON consumed by the Phase 5 renderer are validated by Pydantic models before any value reaches a report or a path.
 
 The self-audit in §18 includes a **Security check** item; §16 carries the SAST and boundary gate lines.

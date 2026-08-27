@@ -20,7 +20,7 @@ Re-read `AGENTS.md`, `docs/AUDIO_GLYPH_INFERENCE_MASTER_PLAN.md`, `docs/status.m
    - Run `cd backend && uv run ruff check .` and `uv run ruff format --check .`.
    - Report any findings.
 3. **SAST**
-   - Run `cd backend && uv run semgrep scan --config auto --error . && uv run pip-audit`, `cd frontend && npm audit --audit-level=high`, and `gitleaks detect --no-git --redact` from the repo root.
+   - Run `cd backend && uv run semgrep scan --config auto --error .`, then the exported-lock audit (`uv export --frozen --no-emit-project --no-hashes --all-groups --all-extras --no-emit-package torch --no-emit-package torchaudio -o requirements-audit.txt && uvx pip-audit --requirement requirements-audit.txt --no-deps`), `cd frontend && npm audit --audit-level=high`, and `gitleaks detect --no-git --redact` from the repo root.
    - Any HIGH/CRITICAL finding is a blocker. List MEDIUM findings with their inline justification; an unjustified MEDIUM is a blocker.
    - For every changed input boundary, confirm its row in `AGENTS.md` §13A `<security>` still describes the code (injection classes + defense); a new boundary without a row is a blocker.
 4. **Coverage gate**

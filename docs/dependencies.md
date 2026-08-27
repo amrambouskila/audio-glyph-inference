@@ -83,6 +83,32 @@ The in-repo Phase-3 Bayesian optimizer also uses `scipy.special.ndtr` for the ex
 | `msgpack` | Binary serialization for WebSocket payloads (Phase 4). JSON is only used for metadata. |
 | `httpx` | Default HTTP client per global `CLAUDE.md` §5 — used as the async test client (`httpx.AsyncClient`) for FastAPI integration tests. No external dataset fetching (master plan §11.1). |
 
+## Version floors and the lock
+
+`backend/uv.lock` is the resolved, committed dependency set. Since the `lint` / `sast` / `test` CI jobs
+install with `uv sync --locked`, the lock is load-bearing: **any edit to `backend/pyproject.toml` must be
+followed by `uv lock`, and both files committed together**, or every job fails at install time.
+
+The `sast` job audits the exported lock, so a new advisory against a pinned version turns the pipeline red
+until the lock is refreshed. Remediate with a targeted `uv lock --upgrade-package <name>` rather than a
+blanket `uv lock --upgrade`, which would also pull unrelated major bumps (librosa 1.x, opencv 5.x, redis 8.x)
+into a project gated on 100% coverage of numerical code.
+
+Five declared floors exist purely to keep a *fresh* resolve — `backend/Dockerfile` runs
+`uv pip compile pyproject.toml` and never reads the lock — off a version with a known advisory:
+
+| Package | Floor | Why the floor, not just the lock |
+|---------|-------|----------------------------------|
+| `python-multipart` | `>=0.0.31` | PYSEC-2026-3036/3037/3039/3040 |
+| `pydantic-settings` | `>=2.14.2` | GHSA-4xgf-cpjx-pc3j |
+| `pillow` | `>=12.3.0` | 13 advisories against 12.2.0 (PYSEC-2026-2253..3496) |
+| `msgpack` | `>=1.2.1` | PYSEC-2026-3625 |
+| `torch` | `>=2.13.0` | torch 2.12 and below cap the transitive `setuptools` below 83.0.0, pinning it onto PYSEC-2026-3447 |
+
+`torchaudio` stays at `>=2.2.0` deliberately: 2.11.0 is the newest published build on
+`download.pytorch.org/whl/cpu` and it declares no `torch` pin, so raising it to match `torch` would make the
+resolve unsatisfiable. Neither package is imported anywhere in `src/`, `tests/`, or `scripts/` today.
+
 ## Optional extras
 
 | Extra      | Package | Why |

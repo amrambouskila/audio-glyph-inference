@@ -116,6 +116,35 @@
 
 ## Security
 
+### Verified state (2026-08-27)
+
+- **Dependency audit: was RED, now green.** `pip-audit` reported 42 advisories across 10 packages in the
+  set synced from `backend/uv.lock`, failing the `sast` job. A targeted `uv lock --upgrade-package` pass
+  cleared all 42 (see `docs/versions.md` for the per-package table). Re-verified in a linux/python3.11
+  container with the CI-exact command: exit 0, "No known vulnerabilities found" across 106 packages.
+- **The gate is provably not blind.** Injecting `urllib3==2.6.3`, `starlette==1.0.0` and `pillow==12.2.0`
+  into the audit input each exits 1 and names the advisory. This was checked because the audit step was
+  rewritten; a rewritten gate that silently passes everything is worse than the failure it replaced.
+- **Container scan: was about to go RED, now green.** Trivy flagged 2 HIGH in the backend image —
+  `CVE-2026-23949` (jaraco.context 5.3.0) and `CVE-2026-24049` (wheel 0.45.1), both vendored in the base
+  image's system setuptools 79.0.1 under `/usr/local`, out of reach of the `apt-get upgrade` layer. A
+  `pip install --upgrade 'setuptools>=84.0.0'` layer clears both. Measured against a pre-fix baseline
+  image: exit 1 with 2 HIGH before, exit 0 with zero findings after, at the CI-exact
+  `--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed` settings. The frontend image stays clean.
+  This job had not run since `sast` started failing, so the finding was latent, not newly introduced.
+- **Semgrep and gitleaks: clean**, run through their official images with this repo's own CI flags.
+- **Known audit blind spots, documented in `CLAUDE.md` §13A:** `torch`/`torchaudio` resolve to PyTorch-index
+  local versions with no PyPI advisory data and are excluded from the audit input by necessity (their
+  presence makes pip-audit's pre-audit pip resolve fail outright); and marker-inactive pins in the universal
+  lock are never scanned on the linux runner. Neither ships in the linux backend image beyond torch itself,
+  which the Trivy image scan does see.
+- **Open, not fixed here (flagged for a decision, not silently changed):** `backend/Dockerfile` still
+  installs via `uv pip compile pyproject.toml` and never reads `uv.lock`, so the shipped image drifts from
+  the audited set (measured: fastapi 0.141.1 in the image vs 0.136.0 in the lock). The root `.trivyignore`
+  is now dead config — neither of its two entries matches anything Trivy reports at any severity since the
+  setuptools upgrade. The Trivy gate also runs with `--ignore-unfixed`, which currently masks 154 HIGH and
+  7 CRITICAL unfixed Debian findings; that gate will fire the day upstream publishes a fix for any of them.
+
 ### Verified state (2026-08-26)
 
 - **Alpine base-image CVEs patched at build time.** `CVE-2026-14456` (`libcrypto3`/`libssl3`
@@ -137,7 +166,7 @@ Security requirements are documented **and enforced**. `CLAUDE.md` / `AGENTS.md`
 
 Wired:
 
-- `sast` job in `.github/workflows/ci.yml` (`needs: lint`; `test` and `frontend` carry `needs: sast`) with `permissions: { contents: read, security-events: write, actions: read }`: CodeQL `python,javascript-typescript`, `pipx run semgrep scan` (SARIF upload + a `Fail on Semgrep findings` step), `gitleaks/gitleaks-action@v2`, and `uv run pip-audit`.
+- `sast` job in `.github/workflows/ci.yml` (`needs: lint`; `test` and `frontend` carry `needs: sast`) with `permissions: { contents: read, security-events: write, actions: read }`: CodeQL `python,javascript-typescript`, `pipx run semgrep scan` (SARIF upload + a `Fail on Semgrep findings` step), `gitleaks/gitleaks-action@v2`, and an exported-lock dependency audit (`uv export --frozen --no-emit-project --no-hashes --all-groups --all-extras --no-emit-package torch --no-emit-package torchaudio` piped into `uvx pip-audit --requirement ... --no-deps`). `lint`/`sast`/`test` install with `uv sync --locked`, so `backend/uv.lock` is now CI-load-bearing: any `backend/pyproject.toml` edit must be followed by `uv lock`, with both files committed together.
 - ruff `S` family in `backend/pyproject.toml` (`select = ["E", "F", "I", "N", "UP", "ANN", "S"]`; `"tests/**" = ["ANN", "S101"]`).
 - `eslint-plugin-security` + `eslint-plugin-no-unsanitized` in `frontend/eslint.config.js`, plus a `sast` npm script for local parity.
 - Trivy `HIGH,CRITICAL` / `exit-code: "1"` / `ignore-unfixed` scan of both images in `docker-build`, which now builds each with `load: true`.
