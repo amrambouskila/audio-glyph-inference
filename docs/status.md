@@ -132,6 +132,13 @@
   image: exit 1 with 2 HIGH before, exit 0 with zero findings after, at the CI-exact
   `--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed` settings. The frontend image stays clean.
   This job had not run since `sast` started failing, so the finding was latent, not newly introduced.
+- **`docker-build` failed at job setup, now pinned.** `aquasecurity/trivy-action@0.28.0` stopped resolving:
+  upstream migrated every tag to a `v` prefix in response to a supply-chain attack and kept only the
+  unprefixed `0.35.0`, so `0.28.0` returns 404. Both steps now use `aquasecurity/trivy-action@v0.36.0`
+  (Trivy v0.70.0; the old pin carried v0.56.1). Re-verified with the pinned scanner against fresh
+  `--no-cache --pull` builds of both Dockerfiles: exit 0, zero findings. `load: true`, the image tags and
+  both Trivy steps have never actually run in CI — they landed 2026-08-23 behind the broken action ref — so
+  the next run exercises that half of the job for the first time.
 - **Semgrep and gitleaks: clean**, run through their official images with this repo's own CI flags.
 - **Known audit blind spots, documented in `CLAUDE.md` §13A:** `torch`/`torchaudio` resolve to PyTorch-index
   local versions with no PyPI advisory data and are excluded from the audit input by necessity (their
@@ -144,6 +151,11 @@
   is now dead config — neither of its two entries matches anything Trivy reports at any severity since the
   setuptools upgrade. The Trivy gate also runs with `--ignore-unfixed`, which currently masks 154 HIGH and
   7 CRITICAL unfixed Debian findings; that gate will fire the day upstream publishes a fix for any of them.
+  Both `docker-build` steps also share the default `type=gha` cache scope, so the frontend export overwrites
+  the backend's every run (proven: both imported cache manifest `gha:3665358336416760568` in the June log);
+  `scope=backend` / `scope=frontend` would fix the hit rate. And with `load: true` now active, the 2.99 GB
+  backend image is copied into the runner's dockerd on top of BuildKit's own layers — headroom on
+  ubuntu-24.04 is the one thing that could not be settled locally.
 
 ### Verified state (2026-08-26)
 

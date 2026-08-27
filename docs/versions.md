@@ -8,7 +8,7 @@ Pre-alpha convention: this project stays on `0.0.x` until the Phase 1 data pipel
 
 ## v0.2.1 — 2026-08-24 (unreleased)
 
-### CI green-up: dependency-audit remediation + two gate fixes (2026-08-27)
+### CI green-up: dependency-audit remediation + three gate fixes (2026-08-27)
 
 The `sast` job was failing on **Backend dependency audit**: `pip-audit` found **42 advisories across 10
 packages** in the environment synced from `backend/uv.lock` (last resolved 2026-08-24). Three CI stages were
@@ -63,6 +63,25 @@ upgrade` layer cannot reach them. Added `RUN python -m pip install --no-cache-di
 setuptools 84 vendors the fixed `jaraco_context` 6.1.0 and `wheel` 0.46.3. Base-image drift, not caused by the
 dependency change.
 
+**`docker-build` failed at job setup — `.github/workflows/ci.yml`.** After the above landed, `lint`, `sast`,
+`frontend`, `test` and `build` all went green and `docker-build` failed in 3 seconds with
+`Unable to resolve action 'aquasecurity/trivy-action@0.28.0', unable to find version '0.28.0'`. Upstream
+migrated every tag to a `v` prefix as part of their response to a supply-chain attack (see the
+`trivy-action` v0.35.0 release notes) and retained only the unprefixed `0.35.0`; `0.28.0` now 404s while
+`v0.28.0` resolves. A pin that worked in June broke with no change on this side. Both Trivy steps are now
+`aquasecurity/trivy-action@v0.36.0`, which defaults to Trivy **v0.70.0** (the old pin carried v0.56.1, from
+October 2024). The four inputs the workflow passes — `image-ref`, `severity`, `exit-code`, `ignore-unfixed` —
+are byte-identical between the two action versions; v0.36.0 only adds `skip-setup-trivy` and
+`token-setup-trivy`, both with safe defaults. All 14 action references across both workflow files were
+confirmed to resolve.
+
+Worth knowing for the next run: `load: true`, the image `tags:`, and both Trivy steps were all added in
+`ae87b90` (2026-08-23) and have **never executed** — the unresolvable action ref killed the job at setup every
+time since. The last green `docker-build` (2026-06-23) contains zero Trivy steps and logged
+`No output specified with docker-container driver`, confirming `load:` was absent then. So the next run
+exercises the second half of that job for the first time. It was de-risked locally with fresh
+`--no-cache --pull` builds of both Dockerfiles followed by the exact gate scans.
+
 **`frontend` browser smoke was ~50% flaky — `frontend/playwright.config.ts`.** Measured 3 failures in 6
 cold-cache runs, every one `page.goto("/")` exceeding the default 30s per-test timeout while Vite pre-bundled
 `three`/`drei`/`chart.js`. Added a top-level `timeout: 180_000`. The worst cold run measured 35.1s locally, and
@@ -75,8 +94,11 @@ injections of a known-vulnerable pin (`urllib3==2.6.3`, `starlette==1.0.0`, `pil
 name the advisory, proving the gate is not blind; ruff check + format are clean; pytest passes at the 100%
 coverage gate against a real Postgres 16; `uv build` produces sdist + wheel; semgrep and gitleaks are clean;
 `npm ci`/`npm audit --audit-level=moderate`/lint/vitest (47 tests, 100%)/build all pass; six consecutive
-cold-cache Playwright runs pass; and Trivy reports 0 HIGH/CRITICAL on both rebuilt images at the CI-exact
-`--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed` settings, against a pre-fix baseline that exits 1.
+cold-cache Playwright runs pass; and Trivy reports 0 HIGH/CRITICAL on both freshly built images at the
+CI-exact `--severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed` settings, using the pinned scanner
+**v0.70.0** that `trivy-action@v0.36.0` installs — against a pre-fix baseline image that exits 1 with 2 HIGH.
+The pinned scanner and `:latest` (v0.74.0) produce an empty symmetric difference over their finding sets, and
+dropping `--ignore-unfixed` surfaces 161 HIGH/CRITICAL, proving the gate is not vacuously green.
 
 **Docs:** `CLAUDE.md` / `AGENTS.md` §5, §12 and §13A (audit command, `uv sync --locked` install, audit blind
 spots), `docs/run_guide.md`, `docs/dependencies.md` (new "Version floors and the lock" section),
